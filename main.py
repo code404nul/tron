@@ -16,6 +16,7 @@ CONFIG_SIZE: int = get_terminal_size().lines - 5
 CONFIG_FACTOR: int = 2
 CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR
 
+
 class Player:
     def __init__(self, symbol, color, x, y):
         self.symbol = symbol
@@ -47,6 +48,18 @@ class Board:
         self.board = []
         self._create_board()
         self.players = players if players else []
+        
+        self.GAME_OVER_SCREEN = """
+  ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███  
+ ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒
+▒██░▄▄▄░▒██  ▀█▄  ▓██    ▓██░▒███      ▒██░  ██▒ ▓██  █▒░▒███   ▓██ ░▄█ ▒
+░▓█  ██▓░██▄▄▄▄██ ▒██    ▒██ ▒▓█  ▄    ▒██   ██░  ▒██ █░░▒▓█  ▄ ▒██▀▀█▄  
+░▒▓███▀▒ ▓█   ▓██▒▒██▒   ░██▒░▒████▒   ░ ████▓▒░   ▒▀█░  ░▒████▒░██▓ ▒██▒
+ ░▒   ▒  ▒▒   ▓▒█░░ ▒░   ░  ░░░ ▒░ ░   ░ ▒░▒░▒░    ░ ▐░  ░░ ▒░ ░░ ▒▓ ░▒▓░
+  ░   ░   ▒   ▒▒ ░░  ░      ░ ░ ░  ░     ░ ▒ ▒░    ░ ░░   ░ ░  ░  ░▒ ░ ▒░
+░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░ 
+      ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░     
+                                                     ░                   """
     
     def _create_board(self): #fonction privée
 
@@ -78,6 +91,10 @@ class Board:
                     print(f"{COLOR[color]}{char}{COLOR['reset']}")
                 else:
                     print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
+                    
+    def game_over(self):
+        system("clear")
+        print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
 
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
 player_orange = Player("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2)
@@ -95,3 +112,5 @@ def test():
 for i in range(40):
     sleep(0.03)
     test()
+    
+board_instance.game_over()
