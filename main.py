@@ -1,3 +1,13 @@
+"""
+▗▄▄▄   ▄▄▄      ▄▄▄▄   ▄▄▄     ■         ■  ▗▞▀▚▖ ▄▄▄  ■      ▄ ▄▄▄▄      ▗▞▀▚▖   ▐▌█  ▐▌▄▄▄▄  ▄   ▄    ■  ▐▌    ▄▄▄  ▄▄▄▄  
+▐▌  █ █   █     █   █ █   █ ▗▄▟▙▄▖    ▗▄▟▙▄▖▐▛▀▀▘▀▄▄▗▄▟▙▄▖    ▄ █   █     ▐▛▀▀▘   ▐▌▀▄▄▞▘█   █ █   █ ▗▄▟▙▄▖▐▌   █   █ █   █ 
+▐▌  █ ▀▄▄▄▀     █   █ ▀▄▄▄▀   ▐▌        ▐▌  ▝▚▄▄▖▄▄▄▀ ▐▌      █ █   █     ▝▚▄▄▖▗▞▀▜▌     █▄▄▄▀  ▀▀▀█   ▐▌  ▐▛▀▚▖▀▄▄▄▀ █   █ 
+▐▙▄▄▀                         ▐▌        ▐▌            ▐▌      █                ▝▚▄▟▌     █     ▄   █   ▐▌  ▐▌ ▐▌            
+                              ▐▌        ▐▌            ▐▌                                 ▀      ▀▀▀    ▐▌                                                                                                      
+
+Arch & Renderaction - Tron game on console
+"""
+
 from os import get_terminal_size, system
 from time import sleep
 
@@ -23,6 +33,8 @@ class Player:
         self.color = color
         self.x = x
         self.y = y
+        self.previous_position = [self.get_position()]
+        self.trace = "░"
     
     def get_position(self): return self.y * CONFIG_REAL_SIZE + self.x
     
@@ -31,6 +43,8 @@ class Player:
         new_y = self.y + dy
         
         if 1 <= new_x < CONFIG_REAL_SIZE - 1 and 1 <= new_y < CONFIG_SIZE - 1:
+            self.previous_position.append(self.get_position())
+            
             self.x = new_x
             self.y = new_y
             return True
@@ -75,7 +89,7 @@ class Board:
         pos_collistion = []
         for player in self.players:
             for position in pos_collistion:
-                if position == player.get_position():
+                if position == player.get_position() or position in player.previous_position:
                     return True
             pos_collistion.append(player.get_position())
         return False
@@ -91,6 +105,12 @@ class Board:
 
         for case in range(len(self.board)):
             char, color = self.board[case]
+        
+            for p in self.players: 
+                if case in [pos for pos in p.previous_position]:
+                    char, color = p.trace, p.color
+                    break
+            
             for player in self.players:
                 if case == player.get_position():
                     char, color = player.symbol, player.color
@@ -105,6 +125,8 @@ class Board:
     def game_over(self):
         system("clear")
         print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
+        sleep(9)
+        quit()
 
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
 player_orange = Player("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2)
@@ -115,9 +137,19 @@ board_instance.add_player(player_orange)
 board_instance.show_stadium()
 
 def test():
+    player_orange.move_up()
+    player_blue.move_down()
+    board_instance.show_stadium()
+
+def test1():
+    player_blue.move_down()
     player_orange.move_left()
     board_instance.show_stadium()
     
-for i in range(16):
+for i in range(4):
     sleep(0.01)
     test()
+
+for i in range(4):
+    sleep(0.01)
+    test1()
