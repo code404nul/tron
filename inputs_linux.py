@@ -6,8 +6,10 @@ def main(stdscr):
         c = stdscr.getch()
         if c != -1:
             stdscr.addstr(str(c) + ' ')
-            stdscr.refresh()
-            stdscr.move(0, 0)
+            pinput=c
+            break
+    print("jehfiesfhuyesfiufgqeztyfqgzyt-")
+    return pinput
         
 
 if __name__ == '__main__':
