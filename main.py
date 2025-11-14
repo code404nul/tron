@@ -8,8 +8,9 @@
 Arch & Renderaction - Tron game on console
 """
 
-from os import get_terminal_size, system
-from time import sleep
+from os import get_terminal_size, system, path
+from time import sleep, mktime, localtime, ctime # ctime for convert sec to date str
+import json
 
 COLOR = {
     "black": "\033[30m",
@@ -26,6 +27,29 @@ CONFIG_SIZE: int = get_terminal_size().lines - 5
 CONFIG_FACTOR: int = 2
 CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR
 
+class SaveManager:
+    def __init__(self, filename="save.json"):
+        if not path.exists(filename):
+            with open(filename, "w") as f:
+                f.write("[]")
+        with open(filename, "r") as f:
+            self.json_content = f.read()
+        self.json_content = json.loads(self.json_content)
+            
+        self.filename = filename
+        
+    
+    def save(self, data):
+        try:
+            self.json_content.append(data)
+            with open(self.filename, "w") as f:
+                f.write(json.dumps(self.json_content, indent=4))
+            return True
+        except Exception as e:
+            print(f"Aie Aie Aie, une erreur...: {e}")
+            return False
+    
+    def load(self): return self.json_content
 
 class Player:
     def __init__(self, symbol, color, x, y):
@@ -35,6 +59,10 @@ class Player:
         self.y = y
         self.previous_position = [self.get_position()]
         self.trace = "░"
+        
+        self.player_name = f"Player_{color}"
+        self.score = 0
+        self.winner = False
     
     def get_position(self): return self.y * CONFIG_REAL_SIZE + self.x
     
@@ -47,6 +75,8 @@ class Player:
             
             self.x = new_x
             self.y = new_y
+            
+            self.score += 10
             return True
         return False
     
@@ -63,6 +93,8 @@ class Board:
         self._create_board()
         self.players = players if players else []
         
+        self.save_manager = SaveManager()
+        
         self.GAME_OVER_SCREEN = """
   ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███  
  ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒
@@ -74,6 +106,7 @@ class Board:
 ░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░ 
       ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░     
                                                      ░                   """
+        
     
     def _create_board(self): #fonction privée
 
@@ -90,6 +123,7 @@ class Board:
         for player in self.players:
             for position in pos_collistion:
                 if position == player.get_position() or position in player.previous_position:
+                    player.winner = True
                     return True
             pos_collistion.append(player.get_position())
         return False
@@ -124,7 +158,33 @@ class Board:
 
     def game_over(self):
         system("clear")
+        
         print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
+        sleep(1)
+        
+        game_data = {}
+        date = mktime(localtime())
+        
+        for player in self.players:
+            if player.winner:
+                player.score += 100
+                print(f"{COLOR[player.color]}{player.player_name} WIN! Score: {player.score}{COLOR['reset']}")
+                game_data[player.player_name] = {
+                    "score": player.score,
+                    "result": "win",
+                    "mouvements": player.previous_position,
+                    "date": date
+                }
+            else:
+                print(f"{COLOR[player.color]}{player.player_name} LOSE! Score: {player.score}{COLOR['reset']}")
+                game_data[player.player_name] = {
+                    "score": player.score,
+                    "result": "lose",
+                    "mouvements": player.previous_position,
+                    "date": date
+                }
+        
+        self.save_manager.save(game_data)
         sleep(9)
         quit()
 
@@ -135,6 +195,7 @@ board_instance = Board()
 board_instance.add_player(player_blue)
 board_instance.add_player(player_orange)
 board_instance.show_stadium()
+
 
 def test():
     player_orange.move_up()
@@ -147,9 +208,9 @@ def test1():
     board_instance.show_stadium()
     
 for i in range(4):
-    sleep(0.01)
+    sleep(0.5)
     test()
 
 for i in range(4):
-    sleep(0.01)
+    sleep(0.5)
     test1()
