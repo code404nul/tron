@@ -52,26 +52,27 @@ class SaveManager:
     def load(self): return self.json_content
 
 class Player:
-    def __init__(self, symbol, color, x, y):
+    def __init__(self, symbol, color, x, y, player_name=None):
         self.symbol = symbol
         self.color = color
         self.x = x
         self.y = y
-        self.previous_position = [self.get_position()]
+        self.previous_position = [self.get_pos()]
         self.trace = "░"
         
-        self.player_name = f"Player_{color}"
+        self.player_name = player_name if player_name else f"Player_{color}"
         self.score = 0
         self.winner = False
     
-    def get_position(self): return self.y * CONFIG_REAL_SIZE + self.x
+    def get_pos(self): return self.y * CONFIG_REAL_SIZE + self.x
     
     def move(self, dx, dy):
         new_x = self.x + dx
         new_y = self.y + dy
         
+        #Verifie Qu'il est dans la grille 1, taille min
         if 1 <= new_x < CONFIG_REAL_SIZE - 1 and 1 <= new_y < CONFIG_SIZE - 1:
-            self.previous_position.append(self.get_position())
+            self.previous_position.append(self.get_pos())
             
             self.x = new_x
             self.y = new_y
@@ -91,6 +92,7 @@ class Board:
     def __init__(self, players=None):
         self.board = []
         self._create_board()
+        # liste vide, ou non renvoie faux en bool - pytonite ^^
         self.players = players if players else []
         
         self.save_manager = SaveManager()
@@ -110,25 +112,34 @@ class Board:
     
     def _create_board(self): #fonction privée
 
-        self.board = [("#", "white")] * CONFIG_REAL_SIZE
+        self.board = [("#", "white")] * CONFIG_REAL_SIZE # Bord du dessus
         
+        #Ligne des cotées
         for i in range(CONFIG_SIZE - 2):
             self.board.append(("#", "white"))
             self.board += [(" ", "black")] * (CONFIG_REAL_SIZE - 2)
             self.board.append(("#", "white"))
-        self.board += [("#", "white")] * CONFIG_REAL_SIZE
+            
+        self.board += [("#", "white")] * CONFIG_REAL_SIZE #Bord du dessous
     
     def _check_collision(self):
-        pos_collistion = []
+        pos_collistion = {player.player_name: player.previous_position for player in self.players} 
+        pos_player = []
+        print(pos_collistion)
         for player in self.players:
-            for position in pos_collistion:
-                if position == player.get_position() or position in player.previous_position:
-                    player.winner = True
-                    return True
-            pos_collistion.append(player.get_position())
+            name = player.player_name
+            if player.get_pos() in pos_collistion.pop(name):
+                return False
+            pos_player.append(player.get_pos())
+        if len(pos_player) != len(set(pos_player)):
+            return True
         return False
 
-    def add_player(self, player): self.players.append(player)
+    def add_player(self, player): 
+        for old_player in self.players:
+            if old_player.player_name == player.player_name:
+                ValueError("Les noms des joueurs doivent être différents, t'es un fou toi.")
+        self.players.append(player)
     
     def show_stadium(self):
         system("clear")
@@ -146,7 +157,7 @@ class Board:
                     break
             
             for player in self.players:
-                if case == player.get_position():
+                if case == player.get_pos():
                     char, color = player.symbol, player.color
                     break
                 
@@ -203,8 +214,8 @@ def demo():
         board_instance.show_stadium()
 
     def test1():
-        player_blue.move_down()
-        player_orange.move_left()
+        player_orange.move_up()
+        player_blue.move_left()
         board_instance.show_stadium()
         
     for i in range(4):
