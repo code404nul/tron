@@ -196,21 +196,23 @@ board_instance.add_player(player_blue)
 board_instance.add_player(player_orange)
 board_instance.show_stadium()
 
+def demo():
+    def test():
+        player_orange.move_up()
+        player_blue.move_down()
+        board_instance.show_stadium()
 
-def test():
-    player_orange.move_up()
-    player_blue.move_down()
-    board_instance.show_stadium()
+    def test1():
+        player_blue.move_down()
+        player_orange.move_left()
+        board_instance.show_stadium()
+        
+    for i in range(4):
+        sleep(0.5)
+        test()
 
-def test1():
-    player_blue.move_down()
-    player_orange.move_left()
-    board_instance.show_stadium()
-    
-for i in range(4):
-    sleep(0.5)
-    test()
+    for i in range(4):
+        sleep(0.5)
+        test1()
 
-for i in range(4):
-    sleep(0.5)
-    test1()
+demo()
