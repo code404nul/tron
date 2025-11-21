@@ -6,6 +6,11 @@
                               ▐▌        ▐▌            ▐▌                                 ▀      ▀▀▀    ▐▌                                                                                                      
 
 Arch & Renderaction - Tron game on console
+
+Ajouter 10 pts pour chaque mouvements, et 100 pts pour le vainqueur
+
+Pour bouger, vous pouvez faire une remap de touche, par défaut : 
+Z/Q/S/D et les fleches pour le deuxième joueurs
 """
 
 from os import get_terminal_size, system, path
@@ -62,7 +67,7 @@ class Player:
         
         self.player_name = player_name if player_name else f"Player_{color}"
         self.score = 0
-        self.winner = False
+        self.loser = False
     
     def get_pos(self): return self.y * CONFIG_REAL_SIZE + self.x
     
@@ -88,6 +93,9 @@ class Player:
     
     def render(self): return f"{COLOR[self.color]}{self.symbol}{COLOR['reset']}"
 
+class Player_AI(Player):
+    def __init__(): pass
+    
 class Board:
     def __init__(self, players=None):
         self.board = []
@@ -123,17 +131,55 @@ class Board:
         self.board += [("#", "white")] * CONFIG_REAL_SIZE #Bord du dessous
     
     def _check_collision(self):
-        pos_collistion = {player.player_name: player.previous_position for player in self.players} 
-        pos_player = []
-        print(pos_collistion)
         for player in self.players:
-            name = player.player_name
-            if player.get_pos() in pos_collistion.pop(name):
-                return False
-            pos_player.append(player.get_pos())
-        if len(pos_player) != len(set(pos_player)):
-            return True
+            
+            previous_pos = player.previous_position[1:] # Fix biscornu de position inital qui arrive 2 fois
+            print(previous_pos)
+            
+            if (len(previous_pos) != len(set(previous_pos))) and len(previous_pos) > 3: # Verifie si dans les positions y a 2 fois la meme, et verifie si y a eu moins 3 valeur, toujours le fix biscornu et puis ca sera une feature si le joeur meurt des le debut, ca fonctionne comme ca on touche pas !
+                player.loser = True
+                return True
+            
+            for other_player in self.players: #peut etre utile pour du +2 joeurs
+                if other_player.player_name != player.player_name:
+                    if player.previous_position[-1] in other_player.previous_position: #Si la pos actuelle et dans la pos d'un autre joueur 
+                        player.loser = True
+                        return True
+        
         return False
+
+    def _game_over(self):
+        sleep(1)
+        system("clear")
+        
+        print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
+        sleep(1)
+        
+        game_data = {}
+        date = mktime(localtime())
+        
+        for player in self.players:
+            if player.loser:
+                print(f"{COLOR[player.color]}{player.player_name} LOSE! Score: {player.score}{COLOR['reset']}")
+                game_data[player.player_name] = {
+                    "score": player.score,
+                    "result": "lose",
+                    "mouvements": player.previous_position,
+                    "date": date
+                }
+            else:
+                player.score += 100
+                print(f"{COLOR[player.color]}{player.player_name} WIN! Score: {player.score}{COLOR['reset']}")
+                game_data[player.player_name] = {
+                    "score": player.score,
+                    "result": "win",
+                    "mouvements": player.previous_position,
+                    "date": date
+                }
+        
+        self.save_manager.save(game_data)
+        sleep(9)
+        quit()
 
     def add_player(self, player): 
         for old_player in self.players:
@@ -145,62 +191,30 @@ class Board:
         system("clear")
         
         if self._check_collision():
-            self.game_over()
+            print("exec game over")
+            self._game_over()
             return
-
-        for case in range(len(self.board)):
+        
+        for case in range(len(self.board)): # pour afficher chaque case
             char, color = self.board[case]
         
-            for p in self.players: 
+            for p in self.players: #tracer les traces
                 if case in [pos for pos in p.previous_position]:
                     char, color = p.trace, p.color
                     break
             
-            for player in self.players:
+            for player in self.players: #tracer la pos actuelle
                 if case == player.get_pos():
                     char, color = player.symbol, player.color
                     break
                 
-            if (case + 1) % CONFIG_REAL_SIZE == 0:
+            if (case + 1) % CONFIG_REAL_SIZE == 0: #tracer les bord
                 print(f"{COLOR[color]}{char}{COLOR['reset']}")
             else:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
-                    
-
-    def game_over(self):
-        system("clear")
-        
-        print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
-        sleep(1)
-        
-        game_data = {}
-        date = mktime(localtime())
-        
-        for player in self.players:
-            if player.winner:
-                player.score += 100
-                print(f"{COLOR[player.color]}{player.player_name} WIN! Score: {player.score}{COLOR['reset']}")
-                game_data[player.player_name] = {
-                    "score": player.score,
-                    "result": "win",
-                    "mouvements": player.previous_position,
-                    "date": date
-                }
-            else:
-                print(f"{COLOR[player.color]}{player.player_name} LOSE! Score: {player.score}{COLOR['reset']}")
-                game_data[player.player_name] = {
-                    "score": player.score,
-                    "result": "lose",
-                    "mouvements": player.previous_position,
-                    "date": date
-                }
-        
-        self.save_manager.save(game_data)
-        sleep(9)
-        quit()
 
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
-player_orange = Player("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2)
+player_orange = Player_AI("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2)
 
 board_instance = Board()
 board_instance.add_player(player_blue)
@@ -209,20 +223,18 @@ board_instance.show_stadium()
 
 def demo():
     def test():
-        player_orange.move_up()
-        player_blue.move_down()
+        player_blue.move_up()
         board_instance.show_stadium()
 
     def test1():
-        player_orange.move_up()
-        player_blue.move_left()
+        player_orange.move_left()
         board_instance.show_stadium()
         
-    for i in range(4):
+    for i in range(2):
         sleep(0.5)
         test()
 
-    for i in range(4):
+    for i in range(6):
         sleep(0.5)
         test1()
 
