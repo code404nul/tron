@@ -58,3 +58,5 @@ class Input_gestion():
 #else:
 #    player1.initbinding2()
 #    player1.inputs_linux()
+
+
