@@ -94,7 +94,19 @@ class Player:
     def render(self): return f"{COLOR[self.color]}{self.symbol}{COLOR['reset']}"
 
 class Player_AI(Player):
-    def __init__(): pass
+    def __init__(self, symbol, color, x, y, board, player_name=None):
+        super().__init__(symbol, color, x, y, player_name)
+        
+        self.board = board
+        self.other_players = []
+        for player in board.players:
+            if type(player) == Player:
+                self.other_players.append(player)
+        self.case = board.board
+    
+    def avoid_case(self):
+        for player in self.other_players:
+            print(player.previous_position)
     
 class Board:
     def __init__(self, players=None):
@@ -214,12 +226,14 @@ class Board:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
-player_orange = Player_AI("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2)
 
 board_instance = Board()
 board_instance.add_player(player_blue)
-board_instance.add_player(player_orange)
+
 board_instance.show_stadium()
+
+player_orange = Player_AI("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, board=board_instance)
+board_instance.add_player(player_orange)
 
 def demo():
     def test():
@@ -238,4 +252,6 @@ def demo():
         sleep(0.5)
         test1()
 
-demo()
+# demo()
+
+player_orange.avoid_case()
