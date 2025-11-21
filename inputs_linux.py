@@ -1,4 +1,6 @@
 import curses
+import os
+
 
 class Inputbinding():
     def __init__(self,tab=[95,95,95,95]):
@@ -12,19 +14,20 @@ class Inputbinding():
 
 
 def main(stdscr):
-
     playersinput=Inputbinding()
     print(playersinput)
     playersinput.up=stdscr.getch()
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(playersinput)
     playersinput.down=stdscr.getch()
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(playersinput)
     playersinput.left=stdscr.getch()
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(playersinput)
     playersinput.right=stdscr.getch()
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(playersinput)
-
-
     stdscr.nodelay(1)
     while True:
         c = stdscr.getch()
