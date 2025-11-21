@@ -102,12 +102,30 @@ class Player_AI(Player):
         for player in board.players:
             if type(player) == Player:
                 self.other_players.append(player)
-        self.case = board.board
+        
+        
+        self.avoid_list = [i for i in range(len(board.board)) if board.board[i][0] == "#"]
     
-    def avoid_case(self):
-        for player in self.other_players:
-            print(player.previous_position)
+    def _avoid_case(self):
+        for player in self.other_players: self.avoid_list += list(set(player.previous_position))
+
+    def detect_possibility(self, case):
+        ENTRYS = {case-1 : self.move_left, 
+                        case+1 : self.move_right,
+                        case-CONFIG_REAL_SIZE : self.move_up, 
+                        case+CONFIG_REAL_SIZE : self.move_down}
+        self._avoid_case()
+
+        possibilitys = []
+        for possibility in ENTRYS.values():
+            if not (possibility in self.avoid_list):
+                possibilitys.append(possibility)
+        return possibility
     
+    def test(self):
+        return self.detect_possibility(self.get_pos())
+    
+
 class Board:
     def __init__(self, players=None):
         self.board = []
@@ -237,7 +255,7 @@ board_instance.add_player(player_orange)
 
 def demo():
     def test():
-        player_blue.move_up()
+        player_blue.move_down()
         board_instance.show_stadium()
 
     def test1():
@@ -252,6 +270,6 @@ def demo():
         sleep(0.5)
         test1()
 
-# demo()
+demo()
 
-player_orange.avoid_case()
+print(player_orange.test())
