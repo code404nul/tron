@@ -246,6 +246,8 @@ class Board:
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
 
 board_instance = Board()
+print(CONFIG_REAL_SIZE)
+sleep(15)
 board_instance.add_player(player_blue)
 
 board_instance.show_stadium()
