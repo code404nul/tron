@@ -388,6 +388,21 @@ class Board:
             else:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
+class NEAT():
+    def __init__(self, pop, gen, random_ness):
+        """
+        Docstring for __init__
+        
+        :param self: Description
+        :param pop: Nombre de population leur d'un génération
+        :param gen: Nombre de génération (ou nombre d'itération)
+        :param random_ness: le nombre d'alléatoire, dans un nombre **compris entre 0 et 1**
+        """
+
+        self.pop, self.gen, self.random_ness = pop, gen, random_ness
+        
+
+"""
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
 
 board_instance = Board()
@@ -420,3 +435,4 @@ def demo():
 demo()
 
 print(player_orange.test())
+"""
