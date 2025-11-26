@@ -49,26 +49,23 @@ class NeuralNetwork:
         
         self.fitness = 0
     
-    def normalize_input(inputs):
+    def normalize_input(loc_joueur, loc_ennemy, trails:list):
         """
-        :param inputs: ## Format :
-        [loc joueur x, loc joueur y, loc ennemie x, loc ennemy, vision...]
-        Vision :
+        - loc du joueur x
+        - loc du ennemy
+        - trails
         
-        -7 trace propre
-        0 vide
-        7 mur
-        16 ennemie
-        -16 trace ennemie
-        
-        Pret défini sur un grille de 18x36
+        On travaille sur une grille de 36x18
         """
-        x = inputs[0] % 18
-        y = inputs[0] // 18
-        enemy_x = inputs[1] % 18
-        enemy_y = inputs[1] // 18
+
+        def normalize_pos(v, v_max): return (v/(v_max/2)) - 1
+        x_joueur, x_ennemi = loc_joueur%36, loc_ennemy%36
+        y_joueur, y_ennemi = normalize_pos(loc_joueur-x_joueur, 36), normalize_pos(loc_ennemy-x_ennemi, 36)
+        x_joueur, x_ennemi = normalize_pos(x_joueur), normalize_pos(x_ennemi)
         
-        return [x / 18, y / 36, enemy_x / 18, enemy_y / 36] + [v / 16 for v in inputs[2:]]
+        centre_arrondi = round(sum(i for i in range(len(trails))) / len(trails))
+
+
 
     def forward(self, input_values):        
         assert len(input_values) == self.input_size, f"Il doit y a voir le meme nombre d'input que initier, c'esta dire la {self.input_size}"
