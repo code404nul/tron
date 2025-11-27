@@ -44,5 +44,4 @@ Bryan : voient la sortie du tunelle un peu de tunning poo et c'est kawaii, creat
 27/11/25
 
 Jules : LA NSI MA MANQUEEERRRRRRRRR trop bien 2h de projet, quoi de mieux ? Implementation du NN, creation du NEAT, implementation du nn dans player_ai et documentation doc string (mais faudra retravailler cette partie) [0.0, 0.0, 0.0, 0.0] la liste du diable, DU DIABLE
-Bryan : Reglage des bugs du menu et des keybinds. tests... NOUVELLE IDEE ! Detect auto de la dispo du clavier, pb jestion qui qui qu'a apuier... du coup tout foutre en liste? bref... 
-
+Bryan : Reglage des bugs du menu et des keybinds. tests... NOUVELLE IDEE ! Detect auto de la dispo du clavier, pb jestion qui qui qu'a apuier... du coup tout foutre en liste? bref...

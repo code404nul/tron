@@ -18,7 +18,7 @@ https://www.datacamp.com/tutorial/forward-propagation-neural-networks
 https://youtu.be/lpYfrshSZ4I?si=2HrP-vuHLTGbbBag On peut dire se que l'on veut, c'est les indiens qui sont les plus pédagoge et poussé?
 """
 
-from os import get_terminal_size, system, path #Pour l'interaction ordi-utilisateur
+from os import system, path #Pour l'interaction ordi-utilisateur, on va souvent utiliser system pour "clear" la console
 from math import exp #Preatique pour l'exp
 from random import uniform, gauss, choice #Pour tout les choix aléatoire
 from copy import deepcopy #Pour copier une instance, en changeant sont adresse mémoire
@@ -36,7 +36,7 @@ COLOR = {
     "reset": "\033[0m"
 }
 
-CONFIG_SIZE: int = get_terminal_size().lines - 5
+CONFIG_SIZE: int = 27 - 5
 CONFIG_FACTOR: int = 2
 CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR
 REMAP_AI = {0: (-1, 0), 1: (1, 0), 2: (0, -1), 3: (0, 1)} # Voir la ligne 234-237
@@ -53,7 +53,6 @@ class SaveManager:
             
         self.filename = filename
         
-    
     def save(self, data):
         try:
             self.json_content.append(data)
@@ -104,17 +103,18 @@ class NeuralNetwork:
             [Neuron(1) for _ in range(4)] # Les neurones output
         ]
         
-
+    @staticmethod
     def normalize_input(loc_joueur, loc_ennemy, trails: list):
-        # CETTE FONCTION A ETE FAITE EN GRANDE PARTIE PAR Claude.AI, donc par soucis d'éthique, on va recoder ca...
-        
-        WIDTH, HEIGHT = 36, 18
-        MAX_TRAILS = 236
+        """Normalise les inputs pour le réseau de neurones
+        Toujours claude ! on le re-fera fait maison, avec peu etre du DFT"""
+        WIDTH, HEIGHT = CONFIG_REAL_SIZE, CONFIG_SIZE  # Utilisez les constantes globales
+        MAX_TRAILS = WIDTH * HEIGHT
         MAX_DIST = (WIDTH**2 + HEIGHT**2)**0.5
         
         normalize = lambda v, v_max: (v / (v_max / 2)) - 1
         
-        def get_coords(pos): return pos % WIDTH, pos // WIDTH
+        def get_coords(pos): 
+            return pos % WIDTH, pos // WIDTH
         
         def distance(pos1, pos2):
             x1, y1 = get_coords(pos1)
@@ -132,14 +132,14 @@ class NeuralNetwork:
             centre = volume = dist_debut = -1.0
         
         return [
-            normalize(x_j, WIDTH), normalize(y_j, HEIGHT), #position joueur
-            normalize(x_e, WIDTH), normalize(y_e, HEIGHT), 
-            centre, volume, dist_debut, #tout ce qui est trails
-            normalize(y_j, HEIGHT),              #haut du mur
-            normalize(HEIGHT - 1 - y_j, HEIGHT), #bas du mur
-            normalize(x_j, WIDTH),               #gauche du mur
+            normalize(x_j, WIDTH), normalize(y_j, HEIGHT),  # position joueur
+            normalize(x_e, WIDTH), normalize(y_e, HEIGHT),  # position ennemi
+            centre, volume, dist_debut,  # tout ce qui est trails
+            normalize(y_j, HEIGHT),              # haut du mur
+            normalize(HEIGHT - 1 - y_j, HEIGHT), # bas du mur
+            normalize(x_j, WIDTH),               # gauche du mur
             normalize(WIDTH - 1 - x_j, WIDTH)    # droit du mur
-            ]
+        ]
 
 
     def forward(self, input_values):        
@@ -162,9 +162,15 @@ class NeuralNetwork:
             inputs = [n.a for n in prev_layer]
             neuron.activation(inputs)
     
-    def predict(self): 
-        print([n.a for n in self.layers[2]])
-        return self.layers[2].index(max(n.a for n in self.layers[2])) # Retourne l'index du neurone avec la plus grande v
+    def predict(self):
+        """Version alternative avec enumerate"""
+        output_values = [n.a for n in self.layers[2]]
+        print(output_values)
+        
+        # Trouver l'index et la valeur max en une seule passe
+        max_index = max(enumerate(output_values), key=lambda x: x[1])[0]
+        return max_index
+
         
     def mutate(self, mutation_rate):
 
@@ -199,6 +205,7 @@ class NeuralNetwork:
             for w_i in range(len(neuron.weights)):
                 neuron.weights[w_i] = choice([self.layers[2][n_i].weights[w_i],parent.layers[2][n_i].weights[w_i]])
         
+        self.mutate(0.3)
         return child
 
 class Player:
@@ -222,6 +229,9 @@ class Player:
         
         #Verifie Qu'il est dans la grille 1, taille min
         if 1 <= new_x < CONFIG_REAL_SIZE - 1 and 1 <= new_y < CONFIG_SIZE - 1:
+            self.loser = True
+            # Apprentissage punitif? TODO
+        else:
             self.previous_position.append(self.get_pos())
             
             self.x = new_x
@@ -239,22 +249,36 @@ class Player:
     def render(self): return f"{COLOR[self.color]}{self.symbol}{COLOR['reset']}"
 
 class Player_AI(Player):
-    def __init__(self, symbol, color, x, y, board, presistion, player_name=None):
+    def __init__(self, symbol, color, x, y, board, presistion, cross_over=None, player_name=None):
         super().__init__(symbol, color, x, y, player_name)
         
-        self.board = board
-
-        for player in board.players:
-            if player.color != color: self.ennemy = player
         
-        self.brain = NeuralNetwork(presistion)
+        self.board = board        
+        self.brain = NeuralNetwork(presistion).crossover(cross_over) if cross_over else NeuralNetwork(presistion)
     
+    def define_ennemy(self):
+    
+        for player in self.board.players:
+            if player.color != self.color: self.ennemy = player
+            
     def analyse_board(self):
-        trails = self.ennemy.previous_position if not (self.ennemy.get_pos() in self.ennemy.previous_position) else  self.ennemy.previous_position.remove(self.ennemy.get_pos())
+        # On crée une liste des trails qui exclut la position actuelle de l'ennemi, sans toucher à la vraie liste
+        trails = [pos for pos in self.ennemy.previous_position if pos != self.ennemy.get_pos()]
         return self.brain.normalize_input(loc_joueur=self.get_pos(), loc_ennemy=self.ennemy.get_pos(), trails=trails)
 
     def move_ai(self): 
-        self.brain.predict()
+        self.brain.forward(self.analyse_board())
+        
+        # On stocke le résultat
+        move_index = self.brain.predict()
+        direction = REMAP_AI[move_index]
+        
+        # On print et on bouge avec la même valeur
+        # print(f"Move: {direction}") # Optionnel, pour debug
+        self.move(*direction)
+    
+    def get_score(self): return self.score #TODO rendre ca moins degeulasse
+
 
 class Board:
     def __init__(self, players=None):
@@ -281,30 +305,32 @@ class Board:
     def _create_board(self): #fonction privée
 
         self.board = [("#", "white")] * CONFIG_REAL_SIZE # Bord du dessus
-        
+        self.border = [i for i in range(CONFIG_REAL_SIZE)]
         #Ligne des cotées
         for i in range(CONFIG_SIZE - 2):
             self.board.append(("#", "white"))
+            self.border.append(len(self.board))
+            
             self.board += [(" ", "black")] * (CONFIG_REAL_SIZE - 2)
             self.board.append(("#", "white"))
+            self.border.append((CONFIG_REAL_SIZE - 2) + len(self.board))
             
         self.board += [("#", "white")] * CONFIG_REAL_SIZE #Bord du dessous
     
     def _check_collision(self):
         for player in self.players:
+            previous_pos = player.previous_position[1:]
+            if not previous_pos: return False #Si previous pos et vide, ca sert a rien de chercher
+            if player.loser == True: return True # Au cas ou car ca sera pas pris en compte... et puis tout fasons le game over fonctionnera uniquement a la 2 eme iténaration...
             
-            previous_pos = player.previous_position[1:] # Fix biscornu de position inital qui arrive 2 fois
-            
-            if (len(previous_pos) != len(set(previous_pos))) and len(previous_pos) > 3: # Verifie si dans les positions y a 2 fois la meme, et verifie si y a eu moins 3 valeur, toujours le fix biscornu et puis ca sera une feature si le joeur meurt des le debut, ca fonctionne comme ca on touche pas !
+            if (len(previous_pos) != len(set(previous_pos))) and len(previous_pos) > 3: # Verification d'auto colistion
                 player.loser = True
                 return True
             
-            for other_player in self.players: #peut etre utile pour du +2 joeurs
-                if other_player.player_name != player.player_name:
-                    if player.previous_position[-1] in other_player.previous_position: #Si la pos actuelle et dans la pos d'un autre joueur 
-                        player.loser = True
+            for other_player in self.players:
+                if other_player != player:
+                    if player.get_pos() in other_player.previous_position: # verification que on est pas dans le chemin de quelqu'un
                         return True
-        
         return False
 
     def _game_over(self):
@@ -347,9 +373,9 @@ class Board:
         self.players.append(player)
     
     def show_stadium(self):
-        system("clear")
-        
-        if self._check_collision():
+        #system("clear")
+        loser_state = [player.loser for player in self.players]
+        if self._check_collision() or (loser_state[0] != loser_state[1]):
             print("exec game over")
             self._game_over()
             return
@@ -373,7 +399,7 @@ class Board:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
 class NEAT():
-    def __init__(self, pop_n, gen_n, presistion, randomness=0.3):
+    def __init__(self, pop_n, gen_n, presistion, randomness=0.3, max_turns = 10): # Les turns c'est mis au cas ou, histoire qu'il se fout pas de nous. 
         """
         Docstring for __init__
         
@@ -383,27 +409,50 @@ class NEAT():
         :param randomness: le nombre d'alléatoire, dans un nombre **compris entre 0 et 1** pitié aller pas a 1, ca sert plus a rien apres
         """
         assert pop_n%2 != 1, "Pop_n est impaire"
-        self.pop_n, self.gen, self.random_ness = pop_n, gen_n, randomness
+        self.pop_n, self.gen, self.random_ness, self.max_turns = pop_n, gen_n, randomness, max_turns
         
         self.board_instance = Board()
-        init_pos = ((CONFIG_REAL_SIZE // 2, 1, "blue"), (CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, "orange"))
-        self.pop = [[Player_AI("O", i, init_pos[i%2][0], init_pos[i%2][1], self.board_instance, 3, None) for i in range(self.pop_n//2)],
-                    [Player_AI("O", i+1, init_pos[(i%2)-1][0], init_pos[(i%2)-1][1], self.board_instance, 3, None) for i in range(self.pop_n//2)]]
+        self.init_pos = ((CONFIG_REAL_SIZE // 2, 1, "blue"), (CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, "orange"))
+        self.pop = [[Player_AI("O", "blue", self.init_pos[i%2][0], self.init_pos[i%2][1], self.board_instance, 3) for i in range(self.pop_n//2)],
+                    [Player_AI("O", "orange", self.init_pos[(i%2)-1][0], self.init_pos[(i%2)-1][1], self.board_instance, 3) for i in range(self.pop_n//2)]]
         
     def play(self, match_i):
-        ai_match = self.pop[0][match_i], self.pop[1][match_i]
+            ai_match = self.pop[0][match_i], self.pop[1][match_i]
+            turns = 0
+            
+            for ai in ai_match: self.board_instance.add_player(ai)
+            for ai in ai_match: ai.define_ennemy() 
+
+            while (not ai_match[0].loser and not ai_match[1].loser) and self.max_turns >= turns:
+
+                for ai in ai_match: 
+                    ai.move_ai()
+                
+                turns += 1
         
-        for ai in ai_match: self.board_instance.add_player(ai) # a opti tout ca 
-        while (ai_match[0] != True) and (ai_match[1] != True): # Ameliroer ca... Doit y avoir de la pythonite ici a faire... 
-            for ai in ai_match: 
-                ai.move_ai()
-                sleep(0.5)
+    def gen_play(self):
+        best_mind = None
+        for gen_i in range(self.gen):
+            for i in range(self.pop_n // 2):
+                self.play(i)
+
+            every_players = self.pop[0] + self.pop[1]
+            best_player = [players.score for players in every_players]
+            best_mind_gen = every_players[best_player.index(max(best_player))]
+            
+            if not best_mind: 
+                best_mind = deepcopy(best_mind_gen)
+                self.pop = [[Player_AI("O", "blue", self.init_pos[i%2][0], self.init_pos[i%2][1], self.board_instance, 3, cross_over=best_player) for i in range(self.pop_n//2)],
+                            [Player_AI("O", "orange", self.init_pos[(i%2)-1][0], self.init_pos[(i%2)-1][1], self.board_instance, 3, cross_over=best_player) for i in range(self.pop_n//2)]]
+                break 
+            else: #Normalement ca a break mais par sécurité
+                self.pop = [[best_mind.brain.crossover(best_mind_gen) for i in range(self.pop_n//2)],
+                            [best_mind.brain.crossover(best_mind_gen) for i in range(self.pop_n//2)]]
+                            # fix ca parce que logiquement ca a le meme scoe et tout
         
-        self.board_instance.show_stadium()
         
 AI_game = NEAT(20, 2, 3)
-            
-AI_game.play(4)
+AI_game.gen_play()
         
 """
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
