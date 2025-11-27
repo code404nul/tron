@@ -18,12 +18,12 @@ https://www.datacamp.com/tutorial/forward-propagation-neural-networks
 https://youtu.be/lpYfrshSZ4I?si=2HrP-vuHLTGbbBag On peut dire se que l'on veut, c'est les indiens qui sont les plus pédagoge et poussé?
 """
 
-from os import get_terminal_size, system, path
-from math import exp, sqrt
-from random import uniform, gauss, choice
-from copy import deepcopy
-from time import sleep, mktime, localtime, ctime # ctime for convert sec to date str
-import json
+from os import get_terminal_size, system, path #Pour l'interaction ordi-utilisateur
+from math import exp #Preatique pour l'exp
+from random import uniform, gauss, choice #Pour tout les choix aléatoire
+from copy import deepcopy #Pour copier une instance, en changeant sont adresse mémoire
+from time import sleep, mktime, localtime, ctime # ctime sec (timestamp) -> str #Gestion du temps
+import json # Gestion fichier .json, utile pour sauvegarde, lecture
 
 COLOR = {
     "black": "\033[30m",
@@ -39,6 +39,8 @@ COLOR = {
 CONFIG_SIZE: int = get_terminal_size().lines - 5
 CONFIG_FACTOR: int = 2
 CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR
+REMAP_AI = {0: (-1, 0), 1: (1, 0), 2: (0, -1), 3: (0, 1)} # Voir la ligne 234-237
+
 
 class SaveManager:
     def __init__(self, filename="save.json"):
@@ -67,47 +69,45 @@ class SaveManager:
 class Neuron:
     def __init__(self, input_size):
         # Initalisation Xavier/He https://www.geeksforgeeks.org/deep-learning/xavier-initialization/ car y a eu des pbs avec la méthode "traditonnel"
-        limit = sqrt(2.0 / input_size)
-        print(input_size)
+        limit = (2.0 / input_size)**2
         self.bias = uniform(-limit, limit)
         self.a = 0.0
         self.weights = [gauss(0, limit) for _ in range(input_size)]
-        print(self.weights)
     
-    def sigmoid(self, x):
-        x_clamped = max(-20, min(20, x))
-        if x_clamped >= 0:
-            return 1 / (1 + exp(-x_clamped))
+    def sigmoid(self, x): # https://www.geogebra.org/calculator/hmxnq3ce
+        x_clamped = max(-20, min(20, x)) # Min de x -20, max de x +20
+        if x_clamped >= 0: # Verifie que la sigmoid et toujours dans le bon sens, voir geogebra
+            return 1 / (1 + exp(-x_clamped)) # Formule de base de la sigmoid
         else:
             exp_x = exp(x_clamped)
             return exp_x / (1 + exp_x)
     
     def activation(self, inputs):
-        weighted_sum = sum(inp * w for inp, w in zip(inputs, self.weights)) + self.bias
+        weighted_sum = sum(inp * w for inp, w in zip(inputs, self.weights)) + self.bias # Application de la formule w0*x0 + w1*x1 + ... + bias
         self.a = self.sigmoid(weighted_sum)
         return self.a
 
 
 class NeuralNetwork:
-    def __init__(self, precistion):
+    def __init__(self, presistion):
         """
         :param vision_size: 8 * vision_size * (vision_size-1)
         Cela sert a visualiser les cases au alentours... 
         """
         
         self.input_size = 11
-        self.width, self.depth = 11*precistion, precistion+1
+        self.width, self.depth = 11*presistion, presistion+1
         
         self.layers = [
             [Neuron(self.width) for _ in range(self.input_size)], # Dans un monde meilleur, les inputs sont juste une liste de 0 ^^ (TODO)
-            [[Neuron(self.width) for _ in range(self.width)] for _ in range(self.depth)],
-            [Neuron(1) for _ in range(4)]
+            [[Neuron(self.width) for _ in range(self.width)] for _ in range(self.depth)], # Ceci est la hidden layer, la partie du rainsonnement
+            [Neuron(1) for _ in range(4)] # Les neurones output
         ]
         
-        self.fitness = 0
 
     def normalize_input(loc_joueur, loc_ennemy, trails: list):
-
+        # CETTE FONCTION A ETE FAITE EN GRANDE PARTIE PAR Claude.AI, donc par soucis d'éthique, on va recoder ca...
+        
         WIDTH, HEIGHT = 36, 18
         MAX_TRAILS = 236
         MAX_DIST = (WIDTH**2 + HEIGHT**2)**0.5
@@ -161,11 +161,10 @@ class NeuralNetwork:
         for neuron in output_layer:
             inputs = [n.a for n in prev_layer]
             neuron.activation(inputs)
-            
-        return [n.a for n in output_layer]
     
-    def predict(self):
-        return self.layers[2].index(max(n.a for n in self.layers[2]))
+    def predict(self): 
+        print([n.a for n in self.layers[2]])
+        return self.layers[2].index(max(n.a for n in self.layers[2])) # Retourne l'index du neurone avec la plus grande v
         
     def mutate(self, mutation_rate):
 
@@ -184,18 +183,19 @@ class NeuralNetwork:
         """Crossover de reproduction sexuelle... donc
         :parent 
         NN a combiner"""
-        child = deepcopy(self)
+        child = deepcopy(self) # On vient s'autocopier dans uen autre variable
 
         for layer_i, layer in enumerate(child.layers[1]): # Hidden layer
             for n_i, n in enumerate(layer):
+                #On choisi de prendre soi le biais du self, soit du deuxieme parent
                 n.bias =  choice([self.layers[1][layer_i][n_i].bias,parent.layers[1][layer_i][n_i].bias]) #Selection des biais
                 
                 for i in range(len(n.weights)):
+                    # Pareil avec les forces
                     n.weights[i] = choice([self.layers[1][layer_i][n_i].weights[i],parent.layers[1][layer_i][n_i].weights[i]]) # ici des poids
         
         for n_i, neuron in enumerate(child.layers[2]): # Output 
-            neuron.bias = choice([self.layers[2][n_i].bias,parent.layers[2][n_i].bias]) 
-
+            neuron.bias = choice([self.layers[2][n_i].bias,parent.layers[2][n_i].bias]) # Meme logique ici
             for w_i in range(len(neuron.weights)):
                 neuron.weights[w_i] = choice([self.layers[2][n_i].weights[w_i],parent.layers[2][n_i].weights[w_i]])
         
@@ -239,37 +239,22 @@ class Player:
     def render(self): return f"{COLOR[self.color]}{self.symbol}{COLOR['reset']}"
 
 class Player_AI(Player):
-    def __init__(self, symbol, color, x, y, board, player_name=None):
+    def __init__(self, symbol, color, x, y, board, presistion, player_name=None):
         super().__init__(symbol, color, x, y, player_name)
         
         self.board = board
-        self.other_players = []
+
         for player in board.players:
-            if type(player) == Player:
-                self.other_players.append(player)
+            if player.color != color: self.ennemy = player
         
-        
-        self.avoid_list = [i for i in range(len(board.board)) if board.board[i][0] == "#"]
+        self.brain = NeuralNetwork(presistion)
     
-    def _avoid_case(self):
-        for player in self.other_players: self.avoid_list += list(set(player.previous_position))
+    def analyse_board(self):
+        trails = self.ennemy.previous_position if not (self.ennemy.get_pos() in self.ennemy.previous_position) else  self.ennemy.previous_position.remove(self.ennemy.get_pos())
+        return self.brain.normalize_input(loc_joueur=self.get_pos(), loc_ennemy=self.ennemy.get_pos(), trails=trails)
 
-    def detect_possibility(self, case):
-        ENTRYS = {case-1 : self.move_left, 
-                        case+1 : self.move_right,
-                        case-CONFIG_REAL_SIZE : self.move_up, 
-                        case+CONFIG_REAL_SIZE : self.move_down}
-        self._avoid_case()
-
-        possibilitys = []
-        for possibility in ENTRYS.values():
-            if not (possibility in self.avoid_list):
-                possibilitys.append(possibility)
-        return possibility
-    
-    def test(self):
-        return self.detect_possibility(self.get_pos())
-    
+    def move_ai(self): 
+        self.brain.predict()
 
 class Board:
     def __init__(self, players=None):
@@ -309,7 +294,6 @@ class Board:
         for player in self.players:
             
             previous_pos = player.previous_position[1:] # Fix biscornu de position inital qui arrive 2 fois
-            print(previous_pos)
             
             if (len(previous_pos) != len(set(previous_pos))) and len(previous_pos) > 3: # Verifie si dans les positions y a 2 fois la meme, et verifie si y a eu moins 3 valeur, toujours le fix biscornu et puis ca sera une feature si le joeur meurt des le debut, ca fonctionne comme ca on touche pas !
                 player.loser = True
@@ -389,19 +373,38 @@ class Board:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
 class NEAT():
-    def __init__(self, pop, gen, random_ness):
+    def __init__(self, pop_n, gen_n, presistion, randomness=0.3):
         """
         Docstring for __init__
         
         :param self: Description
-        :param pop: Nombre de population leur d'un génération
+        :param pop: Nombre de population leur d'un génération (Nombre pair)
         :param gen: Nombre de génération (ou nombre d'itération)
-        :param random_ness: le nombre d'alléatoire, dans un nombre **compris entre 0 et 1**
+        :param randomness: le nombre d'alléatoire, dans un nombre **compris entre 0 et 1** pitié aller pas a 1, ca sert plus a rien apres
         """
-
-        self.pop, self.gen, self.random_ness = pop, gen, random_ness
+        assert pop_n%2 != 1, "Pop_n est impaire"
+        self.pop_n, self.gen, self.random_ness = pop_n, gen_n, randomness
         
-
+        self.board_instance = Board()
+        init_pos = ((CONFIG_REAL_SIZE // 2, 1, "blue"), (CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, "orange"))
+        self.pop = [[Player_AI("O", i, init_pos[i%2][0], init_pos[i%2][1], self.board_instance, 3, None) for i in range(self.pop_n//2)],
+                    [Player_AI("O", i+1, init_pos[(i%2)-1][0], init_pos[(i%2)-1][1], self.board_instance, 3, None) for i in range(self.pop_n//2)]]
+        
+    def play(self, match_i):
+        ai_match = self.pop[0][match_i], self.pop[1][match_i]
+        
+        for ai in ai_match: self.board_instance.add_player(ai) # a opti tout ca 
+        while (ai_match[0] != True) and (ai_match[1] != True): # Ameliroer ca... Doit y avoir de la pythonite ici a faire... 
+            for ai in ai_match: 
+                ai.move_ai()
+                sleep(0.5)
+        
+        self.board_instance.show_stadium()
+        
+AI_game = NEAT(20, 2, 3)
+            
+AI_game.play(4)
+        
 """
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
 
