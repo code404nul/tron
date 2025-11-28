@@ -205,11 +205,11 @@ class NeuralNetwork:
             for w_i in range(len(neuron.weights)):
                 neuron.weights[w_i] = choice([self.layers[2][n_i].weights[w_i],parent.layers[2][n_i].weights[w_i]])
         
-        self.mutate(0.3)
+        child.mutate(0.4)
         return child
 
 class Player:
-    def __init__(self, symbol, color, x, y, player_name=None):
+    def __init__(self, symbol, color, x, y, board, player_name=None):
         self.symbol = symbol
         self.color = color
         self.x = x
@@ -220,6 +220,8 @@ class Player:
         self.player_name = player_name if player_name else f"Player_{color}"
         self.score = 0
         self.loser = False
+        self.colapse = 0
+        self.board = board
     
     def get_pos(self): return self.y * CONFIG_REAL_SIZE + self.x
     
@@ -229,16 +231,19 @@ class Player:
         
         #Verifie Qu'il est dans la grille 1, taille min
         if 1 <= new_x < CONFIG_REAL_SIZE - 1 and 1 <= new_y < CONFIG_SIZE - 1:
-            self.loser = True
-            # Apprentissage punitif? TODO
-        else:
             self.previous_position.append(self.get_pos())
             
             self.x = new_x
             self.y = new_y
             
             self.score += 10
+            self.collapse = 0
             return True
+        else:
+            self.colapse += 1
+            if self.colapse >= 7:
+                if self.score == 0: self.loser = True
+                self.board.game_over()
         return False
     
     def move_left(self): return self.move(-1, 0)
@@ -250,7 +255,7 @@ class Player:
 
 class Player_AI(Player):
     def __init__(self, symbol, color, x, y, board, presistion, cross_over=None, player_name=None):
-        super().__init__(symbol, color, x, y, player_name)
+        super().__init__(symbol, color, x, y, board, player_name)
         
         
         self.board = board        
@@ -333,8 +338,8 @@ class Board:
                         return True
         return False
 
-    def _game_over(self):
-        sleep(1)
+    def game_over(self):
+        sleep(3)
         system("clear")
         
         print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
@@ -377,7 +382,7 @@ class Board:
         loser_state = [player.loser for player in self.players]
         if self._check_collision() or (loser_state[0] != loser_state[1]):
             print("exec game over")
-            self._game_over()
+            self.game_over()
             return
         
         for case in range(len(self.board)): # pour afficher chaque case
@@ -399,7 +404,7 @@ class Board:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
 class NEAT():
-    def __init__(self, pop_n, gen_n, presistion, randomness=0.3, max_turns = 10): # Les turns c'est mis au cas ou, histoire qu'il se fout pas de nous. 
+    def __init__(self, pop_n, gen_n, presistion, randomness=0.3, max_turns = 1000): # Les turns c'est mis au cas ou, histoire qu'il se fout pas de nous. 
         """
         Docstring for __init__
         
@@ -424,36 +429,36 @@ class NEAT():
             for ai in ai_match: ai.define_ennemy() 
 
             while (not ai_match[0].loser and not ai_match[1].loser) and self.max_turns >= turns:
-
                 for ai in ai_match: 
                     ai.move_ai()
-                
+
+                self.board_instance.show_stadium()
                 turns += 1
         
     def gen_play(self):
         best_mind = None
         for gen_i in range(self.gen):
-            for i in range(self.pop_n // 2):
-                self.play(i)
+            for game in range(self.pop_n // 2): self.play(game)
 
-            every_players = self.pop[0] + self.pop[1]
-            best_player = [players.score for players in every_players]
-            best_mind_gen = every_players[best_player.index(max(best_player))]
-            
+            every_player = self.pop[0] + self.pop[1]
+            scores = [pop.score for pop in enumerate(every_player)]
+
+            best_score = every_player.index(max(scores))
+            best_player_gen = every_player[best_score]
+
             if not best_mind: 
-                best_mind = deepcopy(best_mind_gen)
-                self.pop = [[Player_AI("O", "blue", self.init_pos[i%2][0], self.init_pos[i%2][1], self.board_instance, 3, cross_over=best_player) for i in range(self.pop_n//2)],
-                            [Player_AI("O", "orange", self.init_pos[(i%2)-1][0], self.init_pos[(i%2)-1][1], self.board_instance, 3, cross_over=best_player) for i in range(self.pop_n//2)]]
-                break 
-            else: #Normalement ca a break mais par sécurité
-                self.pop = [[best_mind.brain.crossover(best_mind_gen) for i in range(self.pop_n//2)],
-                            [best_mind.brain.crossover(best_mind_gen) for i in range(self.pop_n//2)]]
-                            # fix ca parce que logiquement ca a le meme scoe et tout
+                best_mind, best_player_gen = best_player_gen, [Player_AI("O", "blue", choice(self.init_pos)[0], choice(self.init_pos)[1], self.board_instance, 3) for i in range(self.pop_n//2)]
+
+            self.pop = [[best_player_gen.brain.crossover(best_mind) for i in range(self.pop_n//2)],
+                        [best_player_gen.brain.crossover(best_mind) for i in range(self.pop_n//2)]]
+    
+                    
         
         
 AI_game = NEAT(20, 2, 3)
 AI_game.gen_play()
-        
+# TODO init pos better managing in player_ai   
+
 """
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
 
