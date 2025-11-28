@@ -457,7 +457,7 @@ class NEAT():
         
 AI_game = NEAT(20, 2, 3)
 AI_game.gen_play()
-# TODO init pos better managing in player_ai   
+# TODO init pos better managing in player_ai   https://claude.ai/share/c15ab649-05a6-4c4c-bcbb-d4a725c253a8
 
 """
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
