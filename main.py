@@ -1,10 +1,5 @@
 """
-▗▄▄▄   ▄▄▄      ▄▄▄▄   ▄▄▄     ■         ■  ▗▞▀▚▖ ▄▄▄  ■      ▄ ▄▄▄▄      ▗▞▀▚▖   ▐▌█  ▐▌▄▄▄▄  ▄   ▄    ■  ▐▌    ▄▄▄  ▄▄▄▄  
-▐▌  █ █   █     █   █ █   █ ▗▄▟▙▄▖    ▗▄▟▙▄▖▐▛▀▀▘▀▄▄▗▄▟▙▄▖    ▄ █   █     ▐▛▀▀▘   ▐▌▀▄▄▞▘█   █ █   █ ▗▄▟▙▄▖▐▌   █   █ █   █ 
-▐▌  █ ▀▄▄▄▀     █   █ ▀▄▄▄▀   ▐▌        ▐▌  ▝▚▄▄▖▄▄▄▀ ▐▌      █ █   █     ▝▚▄▄▖▗▞▀▜▌     █▄▄▄▀  ▀▀▀█   ▐▌  ▐▛▀▚▖▀▄▄▄▀ █   █ 
-▐▙▄▄▀                         ▐▌        ▐▌            ▐▌      █                ▝▚▄▟▌     █     ▄   █   ▐▌  ▐▌ ▐▌            
-                              ▐▌        ▐▌            ▐▌                                 ▀      ▀▀▀    ▐▌                                                                                                      
-
+DO NOT TEST IN EDUPYTHON NOW !!!
 Arch & Renderaction - Tron game on console
 
 Ajouter 10 pts pour chaque mouvements, et 100 pts pour le vainqueur
@@ -253,8 +248,25 @@ class Player:
     
     def render(self): return f"{COLOR[self.color]}{self.symbol}{COLOR['reset']}"
 
+
 class Player_AI(Player):
-    def __init__(self, symbol, color, x, y, board, presistion, cross_over=None, player_name=None):
+    DEFAULT_PLAYER = {
+        False : {
+            "x" : CONFIG_REAL_SIZE // 2,
+            "y" : 1,
+            "color" : "blue",
+            "symbol" : "O"
+        },
+        True : {
+            "x" : CONFIG_REAL_SIZE // 2,
+            "y" : CONFIG_SIZE - 2,
+            "color" : "orange",
+            "symbol" : "⬛"
+        }
+    }
+    def __init__(self, board, presistion, cross_over=None, player_name=None, **kargs):
+        self.config = {**self.DEFAULT_CONFIG, **kwargs}
+
         super().__init__(symbol, color, x, y, board, player_name)
         
         

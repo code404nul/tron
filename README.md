@@ -1,4 +1,4 @@
-## TRON (1 fichier, 1 vrai IA, des libs internet, -1000 lignes, docstring sur la compéhensition des NNs) 
+## TRON (1 fichier, 1 vrai IA, des libs interne, -1000 lignes, docstring sur la compéhensition des NNs) 
 
 Comme vu dans le titre, ce projet et le but de reproduire le jeu "tron" et de pouvoir y jouer a 2, mais aussi d'entrainer ca propre IA a l'idée de pokémon (avec un pokédex d'ia) On peut jouer avec l'ia ou voir les ia joueur entre elles. 
 
@@ -45,3 +45,4 @@ Bryan : voient la sortie du tunelle un peu de tunning poo et c'est kawaii, creat
 
 Jules : LA NSI MA MANQUEEERRRRRRRRR trop bien 2h de projet, quoi de mieux ? Implementation du NN, creation du NEAT, implementation du nn dans player_ai et documentation doc string (mais faudra retravailler cette partie) [0.0, 0.0, 0.0, 0.0] la liste du diable, DU DIABLE
 Bryan : Reglage des bugs du menu et des keybinds. tests... NOUVELLE IDEE ! Detect auto de la dispo du clavier, pb jestion qui qui qu'a apuier... du coup tout foutre en liste? bref...
+
