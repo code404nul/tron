@@ -237,8 +237,8 @@ class Player:
         else:
             self.colapse += 1
             if self.colapse >= 7:
-                if self.score == 0: self.loser = True
-                self.board.game_over()
+                self.loser = True
+                #self.board.game_over()
         return False
     
     def move_left(self): return self.move(-1, 0)
@@ -250,48 +250,48 @@ class Player:
 
 
 class Player_AI(Player):
-    DEFAULT_PLAYER = {
-        False : {
-            "x" : CONFIG_REAL_SIZE // 2,
-            "y" : 1,
-            "color" : "blue",
-            "symbol" : "O"
+    DEFAULT_CONFIG = {
+        "blue": {
+            "x": CONFIG_REAL_SIZE // 2,
+            "y": 1,
+            "symbol": "O"
         },
-        True : {
-            "x" : CONFIG_REAL_SIZE // 2,
-            "y" : CONFIG_SIZE - 2,
-            "color" : "orange",
-            "symbol" : "⬛"
+        "orange": {
+            "x": CONFIG_REAL_SIZE // 2,
+            "y": CONFIG_SIZE - 2,
+            "symbol": "X"
         }
     }
-    def __init__(self, board, presistion, cross_over=None, player_name=None, **kargs):
-        self.config = {**self.DEFAULT_CONFIG, **kwargs}
+    
+    def __init__(self, color, board, presistion, cross_over=None, player_name=None):
 
-        super().__init__(symbol, color, x, y, board, player_name)
+        config = self.DEFAULT_CONFIG[color]
+        super().__init__(
+            symbol=config["symbol"],
+            color=color,
+            x=config["x"],
+            y=config["y"],
+            board=board, 
+            player_name=player_name)
         
-        
-        self.board = board        
         self.brain = NeuralNetwork(presistion).crossover(cross_over) if cross_over else NeuralNetwork(presistion)
+        self.ennemy = None
     
     def define_ennemy(self):
-    
         for player in self.board.players:
-            if player.color != self.color: self.ennemy = player
+            if player.color != self.color: 
+                self.ennemy = player
             
     def analyse_board(self):
-        # On crée une liste des trails qui exclut la position actuelle de l'ennemi, sans toucher à la vraie liste
         trails = [pos for pos in self.ennemy.previous_position if pos != self.ennemy.get_pos()]
         return self.brain.normalize_input(loc_joueur=self.get_pos(), loc_ennemy=self.ennemy.get_pos(), trails=trails)
 
     def move_ai(self): 
         self.brain.forward(self.analyse_board())
         
-        # On stocke le résultat
         move_index = self.brain.predict()
         direction = REMAP_AI[move_index]
         
-        # On print et on bouge avec la même valeur
-        # print(f"Move: {direction}") # Optionnel, pour debug
         self.move(*direction)
     
     def get_score(self): return self.score #TODO rendre ca moins degeulasse
@@ -304,7 +304,7 @@ class Board:
         # liste vide, ou non renvoie faux en bool - pytonite ^^
         self.players = players if players else []
         
-        self.save_manager = SaveManager()
+        #self.save_manager = SaveManager()
         
         self.GAME_OVER_SCREEN = """
   ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███  
@@ -351,11 +351,11 @@ class Board:
         return False
 
     def game_over(self):
-        sleep(3)
+        sleep(0)
         system("clear")
         
-        print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
-        sleep(1)
+        #print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}")
+        sleep(0)
         
         game_data = {}
         date = mktime(localtime())
@@ -380,22 +380,22 @@ class Board:
                 }
         
         self.save_manager.save(game_data)
-        sleep(9)
-        quit()
-
+        
     def add_player(self, player): 
         for old_player in self.players:
             if old_player.player_name == player.player_name:
                 ValueError("Les noms des joueurs doivent être différents, t'es un fou toi.")
         self.players.append(player)
     
-    def show_stadium(self):
+    def show_stadium(self, death_at_game_over=True):
         #system("clear")
+        """
         loser_state = [player.loser for player in self.players]
-        if self._check_collision() or (loser_state[0] != loser_state[1]):
+        if (self._check_collision() or (loser_state[0] != loser_state[1])) and death_at_game_over:
             print("exec game over")
             self.game_over()
             return
+        """
         
         for case in range(len(self.board)): # pour afficher chaque case
             char, color = self.board[case]
@@ -416,92 +416,133 @@ class Board:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
 class NEAT():
-    def __init__(self, pop_n, gen_n, presistion, randomness=0.3, max_turns = 1000): # Les turns c'est mis au cas ou, histoire qu'il se fout pas de nous. 
-        """
-        Docstring for __init__
-        
-        :param self: Description
-        :param pop: Nombre de population leur d'un génération (Nombre pair)
-        :param gen: Nombre de génération (ou nombre d'itération)
-        :param randomness: le nombre d'alléatoire, dans un nombre **compris entre 0 et 1** pitié aller pas a 1, ca sert plus a rien apres
-        """
-        assert pop_n%2 != 1, "Pop_n est impaire"
+    def __init__(self, pop_n, gen_n, presistion, randomness=0.3, max_turns=1000): 
+        assert pop_n % 2 == 0, "Pop_n doit être pair"
         self.pop_n, self.gen, self.random_ness, self.max_turns = pop_n, gen_n, randomness, max_turns
         
         self.board_instance = Board()
-        self.init_pos = ((CONFIG_REAL_SIZE // 2, 1, "blue"), (CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, "orange"))
-        self.pop = [[Player_AI("O", "blue", self.init_pos[i%2][0], self.init_pos[i%2][1], self.board_instance, 3) for i in range(self.pop_n//2)],
-                    [Player_AI("O", "orange", self.init_pos[(i%2)-1][0], self.init_pos[(i%2)-1][1], self.board_instance, 3) for i in range(self.pop_n//2)]]
+        
+        self.pop = [
+            [Player_AI("blue", self.board_instance, presistion) for _ in range(self.pop_n // 2)],
+            [Player_AI("orange", self.board_instance, presistion) for _ in range(self.pop_n // 2)]
+        ]
         
     def play(self, match_i):
-            ai_match = self.pop[0][match_i], self.pop[1][match_i]
-            turns = 0
+        ai_match = self.pop[0][match_i], self.pop[1][match_i]
+        turns = 0
+        
+        for ai in ai_match: self.board_instance.add_player(ai)
+        for ai in ai_match: ai.define_ennemy() 
+
+        no_losers = True
+        while self.max_turns >= turns or no_losers:
+            for ai in ai_match: 
+                ai.move_ai()
+                if ai.loser == True: no_losers = False
+                    
+
+            self.board_instance.show_stadium(death_at_game_over=False)
+            turns += 1
             
-            for ai in ai_match: self.board_instance.add_player(ai)
-            for ai in ai_match: ai.define_ennemy() 
-
-            while (not ai_match[0].loser and not ai_match[1].loser) and self.max_turns >= turns:
-                for ai in ai_match: 
-                    ai.move_ai()
-
-                self.board_instance.show_stadium()
-                turns += 1
         
     def gen_play(self):
-        best_mind = None
+        best_overall = None
+        best_overall_score = 0
+        
         for gen_i in range(self.gen):
-            for game in range(self.pop_n // 2): self.play(game)
+            print(f"\n{'='*50}")
+            print(f"Génération {gen_i + 1}/{self.gen}")
+            print(f"{'='*50}")
+            
+            for match_i in range(self.pop_n // 2):
+                self.play(match_i)
+                
+                self.board_instance = Board()
+                self.board_instance.players.clear()
+            
+            all_players = self.pop[0] + self.pop[1]
 
-            every_player = self.pop[0] + self.pop[1]
-            scores = [pop.score for pop in enumerate(every_player)]
-
-            best_score = every_player.index(max(scores))
-            best_player_gen = every_player[best_score]
-
-            if not best_mind: 
-                best_mind, best_player_gen = best_player_gen, [Player_AI("O", "blue", choice(self.init_pos)[0], choice(self.init_pos)[1], self.board_instance, 3) for i in range(self.pop_n//2)]
-
-            self.pop = [[best_player_gen.brain.crossover(best_mind) for i in range(self.pop_n//2)],
-                        [best_player_gen.brain.crossover(best_mind) for i in range(self.pop_n//2)]]
-    
+            all_players.sort(key=lambda p: p.score, reverse=True)
+            
+            # Statistiques de la génération
+            best_gen = all_players[0]
+            avg_score = sum(p.score for p in all_players) / len(all_players)
+            
+            print(f"Meilleur score: {best_gen.score}")
+            print(f"Score moyen: {avg_score:.2f}")
+            print(f"Pire score: {all_players[-1].score}")
+            
+            # Mettre à jour le meilleur global
+            if best_gen.score > best_overall_score:
+                best_overall = deepcopy(best_gen.brain)
+                best_overall_score = best_gen.score
+                print(f"✨ Nouveau record global: {best_overall_score}")
+            
+            # Phase 3: Sélection pour reproduction
+            # On garde les 50% meilleurs (élitisme)
+            elite_size = self.pop_n // 4  # 25% d'élite de chaque couleur
+            
+            blue_players = [p for p in all_players if p.color == "blue"]
+            orange_players = [p for p in all_players if p.color == "orange"]
+            
+            blue_elite = blue_players[:elite_size]
+            orange_elite = orange_players[:elite_size]
+            
+            # Phase 4: Créer la nouvelle génération
+            new_pop_blue = []
+            new_pop_orange = []
+            
+            # Créer les nouvelles populations
+            for i in range(self.pop_n // 2):
+                # Sélection des parents parmi l'élite
+                parent1_blue = choice(blue_elite)
+                parent2_blue = choice(blue_elite)
+                
+                parent1_orange = choice(orange_elite)
+                parent2_orange = choice(orange_elite)
+                
+                # Créer les enfants par crossover - UTILISATION SIMPLIFIÉE
+                child_blue = Player_AI("blue", Board(), 3)
+                child_blue.brain = parent1_blue.brain.crossover(parent2_blue.brain)
+                child_blue.brain.mutate(self.random_ness)
+                
+                child_orange = Player_AI("orange", Board(), 3)
+                child_orange.brain = parent1_orange.brain.crossover(parent2_orange.brain)
+                child_orange.brain.mutate(self.random_ness)
+                
+                new_pop_blue.append(child_blue)
+                new_pop_orange.append(child_orange)
+            
+            # Remplacer l'ancienne population
+            self.pop = [new_pop_blue, new_pop_orange]
+            
+            # Mettre à jour les références du board
+            for player_list in self.pop:
+                for player in player_list:
+                    player.board = self.board_instance
+        
+        print(f"\n{'='*50}")
+        print(f"🏆 Entraînement terminé!")
+        print(f"Meilleur score atteint: {best_overall_score}")
+        print(f"{'='*50}\n")
+        
+        return best_overall
                     
         
         
 AI_game = NEAT(20, 2, 3)
 AI_game.gen_play()
-# TODO init pos better managing in player_ai   https://claude.ai/share/c15ab649-05a6-4c4c-bcbb-d4a725c253a8
 
 """
-player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
+# Exemple d'utilisation simplifiée:
+board = Board()
 
-board_instance = Board()
-print(CONFIG_REAL_SIZE)
-sleep(15)
-board_instance.add_player(player_blue)
+# Avant: Player_AI("O", "blue", CONFIG_REAL_SIZE // 2, 1, board, 3)
+# Maintenant: Player_AI("blue", board, 3)
 
-board_instance.show_stadium()
+player_blue = Player_AI("blue", board, 3)
+player_orange = Player_AI("orange", board, 3)
 
-player_orange = Player_AI("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, board=board_instance)
-board_instance.add_player(player_orange)
-
-def demo():
-    def test():
-        player_blue.move_down()
-        board_instance.show_stadium()
-
-    def test1():
-        player_orange.move_left()
-        board_instance.show_stadium()
-        
-    for i in range(2):
-        sleep(0.5)
-        test()
-
-    for i in range(6):
-        sleep(0.5)
-        test1()
-
-demo()
-
-print(player_orange.test())
+board.add_player(player_blue)
+board.add_player(player_orange)
 """
