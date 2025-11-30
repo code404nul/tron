@@ -439,10 +439,34 @@ class NEAT():
             turns += 1            
         
     def rewind_game(self):
-        best_player = (self.best_blue_players[0], 0) if self.best_blue_players[0].score > self.best_orange_players[0].score else (self.best_orange_players, 1)
-        best_game_i = self.pop[int(best_player[0]==1)].index(best_player[int(best_player[0]==1)]), self.pop[int(best_player[1]==1)].index(best_player[int(best_player[1]==1)])
+        best_blue, best_orange = self.best_blue_players[0], self.best_orange_players[0]
 
-        print(best_game_i)
+        best, pop_idx = (best_blue, 0) if best_blue.score > best_orange.score else (best_orange, 1)
+        match_i = self.pop[pop_idx].index(best)
+        
+        self.board_instance = Board()
+        blue_player, orange_player = self.pop[0][match_i], self.pop[1][match_i]
+        blue_player_pos, orange_player_pos = blue_player.previous_position, orange_player.previous_position
+
+        self.board_instance.add_player(blue_player)
+        self.board_instance.add_player(orange_player)
+
+        for i in range(1, len(blue_player_pos)):
+            blue_previous_pos = blue_player.previous_position[:i]
+            orange_previous_pos = orange_player.previous_position[:i]
+            
+            blue_player.previous_position = blue_previous_pos
+            orange_player.previous_position = orange_previous_pos
+
+            blue_player.x = blue_previous_pos[-1] % CONFIG_REAL_SIZE
+            orange_player.x = orange_previous_pos[-1] % CONFIG_REAL_SIZE
+            blue_player.y = blue_previous_pos[-1] // CONFIG_REAL_SIZE
+            orange_player.y = orange_previous_pos[-1] // CONFIG_REAL_SIZE
+            
+            self.board_instance.show_stadium(death_at_game_over=False)
+            sleep(0.5)
+            system("clear")
+
     def create_pop(self):
         elite_size = self.pop_n // 4
         
@@ -491,8 +515,8 @@ class NEAT():
                 self.board_instance = Board()
                 self.board_instance.players.clear()
             
-            self.best_blue_players = self.pop[0].sort(key=lambda p: p.score, reverse=True) 
-            self.best_orange_players = self.pop[1].sort(key=lambda p: p.score, reverse=True)
+            self.best_blue_players = sorted(self.pop[0], key=lambda p: p.score, reverse=True)
+            self.best_orange_players = sorted(self.pop[1], key=lambda p: p.score, reverse=True)
 
             self.all_players = self.best_blue_players + self.best_orange_players
             self.all_players.sort(key=lambda p: p.score, reverse=True) 
