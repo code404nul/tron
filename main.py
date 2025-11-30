@@ -31,10 +31,24 @@ COLOR = {
     "reset": "\033[0m"
 }
 
+GENRATING_MSG = """
+   ___                          _   _                   
+  / _ \___ _ __   ___ _ __ __ _| |_(_)_ __   __ _       
+ / /_\/ _ \ '_ \ / _ \ '__/ _` | __| | '_ \ / _` |      
+/ /_\\  __/ | | |  __/ | | (_| | |_| | | | | (_| |_ _ _ 
+\____/\___|_| |_|\___|_|  \__,_|\__|_|_| |_|\__, (_|_|_)
+                                            |___/       """
+
 CONFIG_SIZE: int = 27 - 5
 CONFIG_FACTOR: int = 2
 CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR
 REMAP_AI = {0: (-1, 0), 1: (1, 0), 2: (0, -1), 3: (0, 1)} # Voir la ligne 234-237
+
+def del_recurrance(liste):
+    resultat = []
+    for ele in liste:
+        if not resultat or ele != resultat[-1]: resultat.append(ele)
+    return resultat
 
 
 class SaveManager:
@@ -231,6 +245,7 @@ class Player:
             self.collapse = 0
             return True
         else:
+            self.previous_position.append(self.get_pos())
             self.colapse += 1
             if self.colapse >= 7:
                 self.loser = True
@@ -432,36 +447,41 @@ class NEAT():
         ]
         
     def play(self, match_i):
-        ai_match = self.pop[0][match_i], self.pop[1][match_i]
+        ai_match = (self.pop[0][match_i], self.pop[1][match_i])
         turns = 0
-        
-        for ai in ai_match: self.board_instance.add_player(ai)
-        for ai in ai_match: ai.define_ennemy() 
 
-        no_losers = True
-        while self.max_turns >= turns and no_losers:
-            for ai in ai_match: 
+        for ai in ai_match: self.board_instance.add_player(ai)
+        for ai in ai_match: 
+            ai.define_ennemy()
+            ai.previous_position = []
+
+        while turns < self.max_turns:
+            before = [ai.loser for ai in ai_match]
+
+            for ai in ai_match:
                 ai.move_ai()
-                if ai.loser == True: 
-                    no_losers = False
-                    break
-            turns += 1            
+                turns += 1
+
+            if before != [ai.loser for ai in ai_match]:
+                break
         
-    def rewind_game(self):
+    def rewind_game(self, gen_i):
         blue_player_pos, orange_player_pos = self.pop[0][self.best_overall_match_id].previous_position, self.pop[1][self.best_overall_match_id].previous_position
+        #blue_player_pos, orange_player_pos = del_recurrance(blue_player_pos), del_recurrance(orange_player_pos)
 
         board_instance_a = Board()
 
-        print(blue_player_pos)
-        print(orange_player_pos)
-        sleep(90)
         blue_player, orange_player = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1, board_instance_a), Player("X", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, board_instance_a)
         
         board_instance_a.add_player(blue_player)
         board_instance_a.add_player(orange_player)
 
+        color = "green" if gen_i/self.gen < 1 else "blue" if gen_i/self.gen < 2 else "red"
+
         for i in range(1, len(blue_player_pos)):
-            print(len(blue_player_pos) == len(orange_player_pos))
+            print()
+            print(GENRATING_MSG)
+            print(COLOR[color] + "="*20 + str(gen_i) + "/" + str(self.gen) + "=" * 20 + COLOR["reset"] + "\n")
 
             blue_player.move_from_pos(blue_player_pos[i])
             orange_player.move_from_pos(orange_player_pos[i])
@@ -510,8 +530,6 @@ class NEAT():
         best_overall_score = 0
         
         for gen_i in range(self.gen):
-            print(gen_i)
-            
             for match_i in range(self.pop_n // 2):
                 self.play(match_i)
                 
@@ -520,6 +538,7 @@ class NEAT():
             
             best_blue_players = sorted(self.pop[0], key=lambda p: p.score, reverse=True)
             best_orange_players = sorted(self.pop[1], key=lambda p: p.score, reverse=True)
+            self.all_players = sorted(best_blue_players+best_orange_players, key=lambda p: p.score, reverse=True)
             
             if best_blue_players and best_blue_players[0].score > best_overall_score:
                 best_overall = deepcopy(best_blue_players[0].brain)
@@ -532,7 +551,7 @@ class NEAT():
                 best_overall_score = best_orange_players[0].score
                 self.best_overall_match_id = self.pop[1].index(best_orange_players[0])
 
-            self.rewind_game()
+            self.rewind_game(gen_i)
             self.create_pop()
 
         print(best_overall_score)
