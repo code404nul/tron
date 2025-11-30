@@ -37,15 +37,6 @@ CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR
 REMAP_AI = {0: (-1, 0), 1: (1, 0), 2: (0, -1), 3: (0, 1)} # Voir la ligne 234-237
 
 
-def rm_duplicate(positions):
-    if not positions:
-        return []
-    result = [positions[0]]
-    for pos in positions[1:]:
-        if pos != result[-1]:
-            result.append(pos)
-    return result
-
 class SaveManager:
     def __init__(self, filename="save.json"):
         if not path.exists(filename):
@@ -445,31 +436,25 @@ class NEAT():
         turns = 0
         
         for ai in ai_match: self.board_instance.add_player(ai)
-        for ai in ai_match: ai.define_ennemy()
+        for ai in ai_match: ai.define_ennemy() # On a besoin de 2 boucles for car les ennemis on besoin d'etre unis pas un board
 
         no_losers = True
         while self.max_turns >= turns and no_losers:
             for ai in ai_match: 
-                if not ai.loser:  # Ne joue que si le joueur n'a pas déjà perdu
-                    ai.move_ai()
-            
-            # Vérifie si quelqu'un a perdu APRÈS que les deux aient joué
-            for ai in ai_match:
-                if ai.loser:
+                ai.move_ai()
+                if ai.loser == True: 
                     no_losers = False
                     break
-                    
-            turns += 1           
+            turns += 1            
         
     def rewind_game(self):
         blue_player_pos, orange_player_pos = self.pop[0][self.best_overall_match_id].previous_position, self.pop[1][self.best_overall_match_id].previous_position
-        blue_player_pos, orange_player_pos = rm_duplicate(blue_player_pos), rm_duplicate(orange_player_pos)
 
         board_instance_a = Board()
 
-        print(len(blue_player_pos))
-        print(len(orange_player_pos))
-        sleep(100)
+        print(blue_player_pos)
+        print(orange_player_pos)
+        sleep(90)
         blue_player, orange_player = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1, board_instance_a), Player("X", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, board_instance_a)
         
         board_instance_a.add_player(blue_player)
