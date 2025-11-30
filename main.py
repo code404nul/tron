@@ -90,7 +90,7 @@ class NeuralNetwork:
         """
         
         self.input_size = 11
-        self.width, self.depth = 11*presistion, presistion+1
+        self.width, self.depth = 32*max(1, presistion), presistion+1
         
         self.layers = [
             [Neuron(self.width) for _ in range(self.input_size)], # Dans un monde meilleur, les inputs sont juste une liste de 0 ^^ (TODO)
@@ -160,8 +160,6 @@ class NeuralNetwork:
     def predict(self):
         """Version alternative avec enumerate"""
         output_values = [n.a for n in self.layers[2]]
-        print(output_values)
-        
         # Trouver l'index et la valeur max en une seule passe
         max_index = max(enumerate(output_values), key=lambda x: x[1])[0]
         return max_index
@@ -199,8 +197,6 @@ class NeuralNetwork:
             neuron.bias = choice([self.layers[2][n_i].bias,parent.layers[2][n_i].bias]) # Meme logique ici
             for w_i in range(len(neuron.weights)):
                 neuron.weights[w_i] = choice([self.layers[2][n_i].weights[w_i],parent.layers[2][n_i].weights[w_i]])
-        
-        child.mutate(0.4)
         return child
 
 class Player:
@@ -238,6 +234,7 @@ class Player:
             self.colapse += 1
             if self.colapse >= 7:
                 self.loser = True
+                self.score = 0
                 #self.board.game_over()
         return False
     
@@ -432,27 +429,61 @@ class NEAT():
         turns = 0
         
         for ai in ai_match: self.board_instance.add_player(ai)
-        for ai in ai_match: ai.define_ennemy() 
+        for ai in ai_match: ai.define_ennemy() # On a besoin de 2 boucles for car les ennemis on besoin d'etre unis pas un board
 
         no_losers = True
-        while self.max_turns >= turns or no_losers:
+        while self.max_turns >= turns and no_losers:
             for ai in ai_match: 
                 ai.move_ai()
                 if ai.loser == True: no_losers = False
-                    
-
-            self.board_instance.show_stadium(death_at_game_over=False)
-            turns += 1
-            
+            turns += 1            
         
+    def rewind_game(self):
+        best_player = (self.best_blue_players[0], 0) if self.best_blue_players[0].score > self.best_orange_players[0].score else (self.best_orange_players, 1)
+        best_game_i = self.pop[int(best_player[0]==1)].index(best_player[int(best_player[0]==1)]), self.pop[int(best_player[1]==1)].index(best_player[int(best_player[1]==1)])
+
+        print(best_game_i)
+    def create_pop(self):
+        elite_size = self.pop_n // 4
+        
+        blue_players = [p for p in self.all_players if p.color == "blue"]
+        orange_players = [p for p in self.all_players if p.color == "orange"]
+        
+        blue_elite = blue_players[:elite_size]
+        orange_elite = orange_players[:elite_size]
+        
+        new_pop_blue = []
+        new_pop_orange = []
+        
+        for i in range(self.pop_n // 2):
+            parent1_blue = choice(blue_elite)
+            parent2_blue = choice(blue_elite)
+            
+            parent1_orange = choice(orange_elite)
+            parent2_orange = choice(orange_elite)
+            
+            child_blue = Player_AI("blue", Board(), 3)
+            child_blue.brain = parent1_blue.brain.crossover(parent2_blue.brain)
+            child_blue.brain.mutate(self.random_ness)
+            
+            child_orange = Player_AI("orange", Board(), 3)
+            child_orange.brain = parent1_orange.brain.crossover(parent2_orange.brain)
+            child_orange.brain.mutate(self.random_ness)
+            
+            new_pop_blue.append(child_blue)
+            new_pop_orange.append(child_orange)
+        
+        self.pop = [new_pop_blue, new_pop_orange]
+        
+        for player_list in self.pop:
+            for player in player_list: player.board = self.board_instance
+
     def gen_play(self):
         best_overall = None
         best_overall_score = 0
         
         for gen_i in range(self.gen):
-            print(f"\n{'='*50}")
-            print(f"Génération {gen_i + 1}/{self.gen}")
-            print(f"{'='*50}")
+            print(gen_i)
             
             for match_i in range(self.pop_n // 2):
                 self.play(match_i)
@@ -460,77 +491,28 @@ class NEAT():
                 self.board_instance = Board()
                 self.board_instance.players.clear()
             
-            all_players = self.pop[0] + self.pop[1]
+            self.best_blue_players = self.pop[0].sort(key=lambda p: p.score, reverse=True) 
+            self.best_orange_players = self.pop[1].sort(key=lambda p: p.score, reverse=True)
 
-            all_players.sort(key=lambda p: p.score, reverse=True)
+            self.all_players = self.best_blue_players + self.best_orange_players
+            self.all_players.sort(key=lambda p: p.score, reverse=True) 
             
-            # Statistiques de la génération
-            best_gen = all_players[0]
-            avg_score = sum(p.score for p in all_players) / len(all_players)
+            self.best_gen = self.all_players[0]
             
-            print(f"Meilleur score: {best_gen.score}")
-            print(f"Score moyen: {avg_score:.2f}")
-            print(f"Pire score: {all_players[-1].score}")
-            
-            # Mettre à jour le meilleur global
-            if best_gen.score > best_overall_score:
-                best_overall = deepcopy(best_gen.brain)
-                best_overall_score = best_gen.score
-                print(f"✨ Nouveau record global: {best_overall_score}")
-            
-            # Phase 3: Sélection pour reproduction
-            # On garde les 50% meilleurs (élitisme)
-            elite_size = self.pop_n // 4  # 25% d'élite de chaque couleur
-            
-            blue_players = [p for p in all_players if p.color == "blue"]
-            orange_players = [p for p in all_players if p.color == "orange"]
-            
-            blue_elite = blue_players[:elite_size]
-            orange_elite = orange_players[:elite_size]
-            
-            # Phase 4: Créer la nouvelle génération
-            new_pop_blue = []
-            new_pop_orange = []
-            
-            # Créer les nouvelles populations
-            for i in range(self.pop_n // 2):
-                # Sélection des parents parmi l'élite
-                parent1_blue = choice(blue_elite)
-                parent2_blue = choice(blue_elite)
-                
-                parent1_orange = choice(orange_elite)
-                parent2_orange = choice(orange_elite)
-                
-                # Créer les enfants par crossover - UTILISATION SIMPLIFIÉE
-                child_blue = Player_AI("blue", Board(), 3)
-                child_blue.brain = parent1_blue.brain.crossover(parent2_blue.brain)
-                child_blue.brain.mutate(self.random_ness)
-                
-                child_orange = Player_AI("orange", Board(), 3)
-                child_orange.brain = parent1_orange.brain.crossover(parent2_orange.brain)
-                child_orange.brain.mutate(self.random_ness)
-                
-                new_pop_blue.append(child_blue)
-                new_pop_orange.append(child_orange)
-            
-            # Remplacer l'ancienne population
-            self.pop = [new_pop_blue, new_pop_orange]
-            
-            # Mettre à jour les références du board
-            for player_list in self.pop:
-                for player in player_list:
-                    player.board = self.board_instance
-        
-        print(f"\n{'='*50}")
-        print(f"🏆 Entraînement terminé!")
-        print(f"Meilleur score atteint: {best_overall_score}")
-        print(f"{'='*50}\n")
-        
+            if self.best_gen.score > best_overall_score:
+                best_overall = deepcopy(self.best_gen.brain)
+                best_overall_score = self.best_gen.score
+                print(f"nouveau socre : {best_overall_score}")
+
+            self.rewind_game()
+            self.create_pop()
+
+        print(best_overall_score)
         return best_overall
                     
         
         
-AI_game = NEAT(20, 2, 3)
+AI_game = NEAT(200, 30, 2, randomness=0.4)
 AI_game.gen_play()
 
 """
