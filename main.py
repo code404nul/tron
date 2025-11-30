@@ -37,6 +37,15 @@ CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR
 REMAP_AI = {0: (-1, 0), 1: (1, 0), 2: (0, -1), 3: (0, 1)} # Voir la ligne 234-237
 
 
+def rm_duplicate(positions):
+    if not positions:
+        return []
+    result = [positions[0]]
+    for pos in positions[1:]:
+        if pos != result[-1]:
+            result.append(pos)
+    return result
+
 class SaveManager:
     def __init__(self, filename="save.json"):
         if not path.exists(filename):
@@ -238,6 +247,13 @@ class Player:
                 #self.board.game_over()
         return False
     
+    def move_from_pos(self, case):
+        distance = self.get_pos() - case
+        if distance == CONFIG_REAL_SIZE: self.move(0, -1)
+        elif distance == -CONFIG_REAL_SIZE: self.move(0, 1)
+        elif distance == 1: self.move(-1, 0)
+        elif distance == -1: self.move(1, 0) # TODO corriger ca
+        
     def move_left(self): return self.move(-1, 0)
     def move_right(self): return self.move(1, 0)
     def move_up(self):  return self.move(0, -1)
@@ -429,41 +445,43 @@ class NEAT():
         turns = 0
         
         for ai in ai_match: self.board_instance.add_player(ai)
-        for ai in ai_match: ai.define_ennemy() # On a besoin de 2 boucles for car les ennemis on besoin d'etre unis pas un board
+        for ai in ai_match: ai.define_ennemy()
 
         no_losers = True
         while self.max_turns >= turns and no_losers:
             for ai in ai_match: 
-                ai.move_ai()
-                if ai.loser == True: no_losers = False
-            turns += 1            
+                if not ai.loser:  # Ne joue que si le joueur n'a pas déjà perdu
+                    ai.move_ai()
+            
+            # Vérifie si quelqu'un a perdu APRÈS que les deux aient joué
+            for ai in ai_match:
+                if ai.loser:
+                    no_losers = False
+                    break
+                    
+            turns += 1           
         
     def rewind_game(self):
-        best_blue, best_orange = self.best_blue_players[0], self.best_orange_players[0]
+        blue_player_pos, orange_player_pos = self.pop[0][self.best_overall_match_id].previous_position, self.pop[1][self.best_overall_match_id].previous_position
+        blue_player_pos, orange_player_pos = rm_duplicate(blue_player_pos), rm_duplicate(orange_player_pos)
 
-        best, pop_idx = (best_blue, 0) if best_blue.score > best_orange.score else (best_orange, 1)
-        match_i = self.pop[pop_idx].index(best)
+        board_instance_a = Board()
+
+        print(len(blue_player_pos))
+        print(len(orange_player_pos))
+        sleep(100)
+        blue_player, orange_player = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1, board_instance_a), Player("X", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2, board_instance_a)
         
-        self.board_instance = Board()
-        blue_player, orange_player = self.pop[0][match_i], self.pop[1][match_i]
-        blue_player_pos, orange_player_pos = blue_player.previous_position, orange_player.previous_position
-
-        self.board_instance.add_player(blue_player)
-        self.board_instance.add_player(orange_player)
+        board_instance_a.add_player(blue_player)
+        board_instance_a.add_player(orange_player)
 
         for i in range(1, len(blue_player_pos)):
-            blue_previous_pos = blue_player.previous_position[:i]
-            orange_previous_pos = orange_player.previous_position[:i]
-            
-            blue_player.previous_position = blue_previous_pos
-            orange_player.previous_position = orange_previous_pos
+            print(len(blue_player_pos) == len(orange_player_pos))
 
-            blue_player.x = blue_previous_pos[-1] % CONFIG_REAL_SIZE
-            orange_player.x = orange_previous_pos[-1] % CONFIG_REAL_SIZE
-            blue_player.y = blue_previous_pos[-1] // CONFIG_REAL_SIZE
-            orange_player.y = orange_previous_pos[-1] // CONFIG_REAL_SIZE
-            
-            self.board_instance.show_stadium(death_at_game_over=False)
+            blue_player.move_from_pos(blue_player_pos[i])
+            orange_player.move_from_pos(orange_player_pos[i])
+
+            board_instance_a.show_stadium(death_at_game_over=False)
             sleep(0.5)
             system("clear")
 
@@ -515,18 +533,19 @@ class NEAT():
                 self.board_instance = Board()
                 self.board_instance.players.clear()
             
-            self.best_blue_players = sorted(self.pop[0], key=lambda p: p.score, reverse=True)
-            self.best_orange_players = sorted(self.pop[1], key=lambda p: p.score, reverse=True)
+            best_blue_players = sorted(self.pop[0], key=lambda p: p.score, reverse=True)
+            best_orange_players = sorted(self.pop[1], key=lambda p: p.score, reverse=True)
+            
+            if best_blue_players and best_blue_players[0].score > best_overall_score:
+                best_overall = deepcopy(best_blue_players[0].brain)
+                best_overall_score = best_blue_players[0].score
 
-            self.all_players = self.best_blue_players + self.best_orange_players
-            self.all_players.sort(key=lambda p: p.score, reverse=True) 
+                self.best_overall_match_id = self.pop[0].index(best_blue_players[0])
             
-            self.best_gen = self.all_players[0]
-            
-            if self.best_gen.score > best_overall_score:
-                best_overall = deepcopy(self.best_gen.brain)
-                best_overall_score = self.best_gen.score
-                print(f"nouveau socre : {best_overall_score}")
+            if best_orange_players and best_orange_players[0].score > best_overall_score:
+                best_overall = deepcopy(best_orange_players[0].brain)
+                best_overall_score = best_orange_players[0].score
+                self.best_overall_match_id = self.pop[1].index(best_orange_players[0])
 
             self.rewind_game()
             self.create_pop()
