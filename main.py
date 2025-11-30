@@ -436,7 +436,7 @@ class NEAT():
         turns = 0
         
         for ai in ai_match: self.board_instance.add_player(ai)
-        for ai in ai_match: ai.define_ennemy() # On a besoin de 2 boucles for car les ennemis on besoin d'etre unis pas un board
+        for ai in ai_match: ai.define_ennemy() 
 
         no_losers = True
         while self.max_turns >= turns and no_losers:
