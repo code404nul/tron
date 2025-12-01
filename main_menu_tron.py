@@ -4,6 +4,7 @@
 #3. Credit et info sur la config (jourbnal de botrfd)
 
 import os
+from copy import deepcopy
 
 if os.name == 'nt': import msvcrt
 else: import curses
@@ -56,30 +57,28 @@ class Input_gestion():
 def start_game():
     print("t'as crue le jeu il est fini?")
 
-def execution_menu(joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]):
-    clear()
-    print("""
-  _______                              _   _                            _ _ _   _
- |__   __|                            | | | |                          | (_) | (_)
-    | |_ __ ___  _ __      _ __  _   _| |_| |__   ___  _ __     ___  __| |_| |_ _  ___  _ __
-    | | '__/ _ \| '_ \    | '_ \| | | | __| '_ \ / _ \| '_ \   / _ \/ _` | | __| |/ _ \| '_ \
-    | | | | (_) | | | |   | |_) | |_| | |_| | | | (_) | | | | |  __/ (_| | | |_| | (_) | | | |
-    |_|_|  \___/|_| |_|   | .__/ \__, |\__|_| |_|\___/|_| |_|  \___|\__,_|_|\__|_|\___/|_| |_|
-                          | |     __/ |
-                          |_|    |___/
-        1.START GAME
-        2.CONTROLS
-        3.CREDIT AND MORE
-""")
-    try:
-        selection=int(input())
-    except ValueError:
-        execution_menu(joueur)
+joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]
 
-    if selection==1:
-        start_game()
 
-    elif selection==2:
+class menu:
+    def __init__(self):
+        print("""
+ _______ ______ _______ _______ 
+(_______|_____ (_______|_______)
+    _    _____) )     _ _     _ 
+   | |  |  __  / |   | | |   | |
+   | |  | |  \ \ |___| | |   | |
+   |_|  |_|   |_\_____/|_|   |_|""")
+        self.menu_count = 0
+        self.menu = {}
+        
+    def create_selection(self, menu_name, fonction):
+        self.menu_count += 1
+        self.menu[menu_name] = [deepcopy(self.menu_count), " ", fonction]
+        print(f"     [{self.pointer[self.menu_count]}] - {menu_name}")
+
+
+    def input_binding(self):
 
         joueur = [Input_gestion(), Input_gestion()]
         if os.name == 'nt':
@@ -90,14 +89,5 @@ def execution_menu(joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,2
             joueur[0].initbindinglinux()
             joueur[1].initbindinglinux()
             execution_menu(joueur)
-
-
-    elif selection==3:
-        ink=input()
-        print(str(joueur[ink].input_table))
-
-    else:
-        execution_menu(joueur)
-
 
 execution_menu()
