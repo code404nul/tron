@@ -13,12 +13,13 @@ https://www.datacamp.com/tutorial/forward-propagation-neural-networks
 https://youtu.be/lpYfrshSZ4I?si=2HrP-vuHLTGbbBag On peut dire se que l'on veut, c'est les indiens qui sont les plus pédagoge et poussé?
 """
 
-from os import system, path #Pour l'interaction ordi-utilisateur, on va souvent utiliser system pour "clear" la console
+from os import system, path, get_terminal_size #Pour l'interaction ordi-utilisateur, on va souvent utiliser system pour "clear" la console
 from math import exp #Preatique pour l'exp
-from random import uniform, gauss, choice #Pour tout les choix aléatoire
+from random import uniform, gauss, choice, randint #Pour tout les choix aléatoire
 from copy import deepcopy #Pour copier une instance, en changeant sont adresse mémoire
 from time import sleep, mktime, localtime, ctime # ctime sec (timestamp) -> str #Gestion du temps
 import json # Gestion fichier .json, utile pour sauvegarde, lecture
+import threading
 
 COLOR = {
     "black": "\033[30m",
@@ -49,6 +50,65 @@ def del_recurrance(liste):
     for ele in liste:
         if not resultat or ele != resultat[-1]: resultat.append(ele)
     return resultat
+
+def forth_and_back_animation():
+    # Forth and Back by Al Sweigart al@inventwithpython.com 2024
+    
+    WIDTH = get_terminal_size()[0] - 1
+    DELAY = 0.04
+
+    steps_before_switch = 20
+
+    BLOCK_CHAR = '#'
+    BLOCK_WIDTH = 14
+
+    empty_chars = list('~                                          ')
+
+    pos = 0
+    speed = 0
+    step = 0
+    total_steps = 0
+    direction = 'right'
+    while True:
+        if step > steps_before_switch and direction == 'right':
+            speed += 1
+            pos += speed
+            if pos > WIDTH - BLOCK_WIDTH:
+                pos = WIDTH - BLOCK_WIDTH
+                step = 0
+                speed = 0
+                direction = 'left'
+                steps_before_switch = randint(10, 40)  # was 20, 70
+                if len(empty_chars) > 4:
+                    empty_chars.pop()
+                    empty_chars.pop()
+                    empty_chars.pop()
+        elif step > steps_before_switch and direction == 'left':
+            speed -= 1
+            pos += speed
+            if pos < 0:
+                pos = 0
+                step = 0
+                speed = 0
+                direction = 'right'
+                steps_before_switch = randint(1, 20)   # was 10, 40
+                if len(empty_chars) > 4:
+                    empty_chars.pop()
+                    empty_chars.pop()
+                    empty_chars.pop()
+
+        for i in range(BLOCK_WIDTH // 2):
+            columns = [choice(empty_chars) for i in range(WIDTH)]
+            for i in range(pos, pos + BLOCK_WIDTH):
+                columns[i] = BLOCK_CHAR
+            print(''.join(columns))
+        sleep(DELAY)
+        
+        step += 1
+        total_steps += 1
+        if total_steps == 1000:
+            total_steps = 0
+            empty_chars = list('~                                          ')
 
 
 class SaveManager:
