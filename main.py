@@ -69,7 +69,7 @@ def forth_and_back_animation():
     step = 0
     total_steps = 0
     direction = 'right'
-    while True:
+    while not stop_flag:
         if step > steps_before_switch and direction == 'right':
             speed += 1
             pos += speed
@@ -110,6 +110,16 @@ def forth_and_back_animation():
             total_steps = 0
             empty_chars = list('~                                          ')
 
+def animate_scroll_art():
+    global stop_flag
+    stop_flag = False
+    thread = threading.Thread(target=forth_and_back_animation)
+    thread.start()
+    return thread
+
+def stop_scroll_art():
+    global stop_flag
+    stop_flag = True
 
 class SaveManager:
     def __init__(self, filename="save.json"):
@@ -505,6 +515,8 @@ class NEAT():
             [Player_AI("orange", self.board_instance, presistion) for _ in range(self.pop_n // 2)]
         ]
         
+        self.animation = animate_scroll_art()
+        
     def play(self, match_i):
         ai_match = (self.pop[0][match_i], self.pop[1][match_i])
         turns = 0
@@ -525,6 +537,9 @@ class NEAT():
                 break
         
     def rewind_game(self, gen_i):
+        stop_scroll_art()
+
+        
         blue_player_pos, orange_player_pos = self.pop[0][self.best_overall_match_id].previous_position, self.pop[1][self.best_overall_match_id].previous_position
         #blue_player_pos, orange_player_pos = del_recurrance(blue_player_pos), del_recurrance(orange_player_pos)
 
@@ -548,6 +563,8 @@ class NEAT():
             board_instance_a.show_stadium(death_at_game_over=False)
             sleep(0.5)
             system("clear")
+            
+        self.animation = animate_scroll_art()
 
     def create_pop(self):
         elite_size = self.pop_n // 4
@@ -589,6 +606,7 @@ class NEAT():
         best_overall_score = 0
         
         for gen_i in range(self.gen):
+            
             for match_i in range(self.pop_n // 2):
                 self.play(match_i)
                 
