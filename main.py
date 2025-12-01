@@ -58,7 +58,7 @@ class SaveManager:
                 f.write("[]")
         with open(filename, "r") as f:
             self.json_content = f.read()
-        self.json_content = json.loads(self.json_content)
+        self.json_content = json.loads(self.json_content) # Par defaut config.json doit contenir une liste video sinon erreur TODO
             
         self.filename = filename
         
@@ -323,7 +323,7 @@ class Board:
         # liste vide, ou non renvoie faux en bool - pytonite ^^
         self.players = players if players else []
         
-        #self.save_manager = SaveManager()
+        self.save_manager = SaveManager()
         
         self.GAME_OVER_SCREEN = """
   ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███  
@@ -408,13 +408,12 @@ class Board:
     
     def show_stadium(self, death_at_game_over=True):
         #system("clear")
-        """
+
         loser_state = [player.loser for player in self.players]
-        if (self._check_collision() or (loser_state[0] != loser_state[1])) and death_at_game_over:
+        if (self._check_collision() or (loser_state[0] != loser_state[1])):
             print("exec game over")
-            self.game_over()
+            if death_at_game_over: self.game_over()
             return
-        """
         
         for case in range(len(self.board)): # pour afficher chaque case
             char, color = self.board[case]
@@ -557,21 +556,35 @@ class NEAT():
         print(best_overall_score)
         return best_overall
                     
-        
-        
+
 AI_game = NEAT(200, 30, 2, randomness=0.4)
 AI_game.gen_play()
-
 """
-# Exemple d'utilisation simplifiée:
 board = Board()
-
-# Avant: Player_AI("O", "blue", CONFIG_REAL_SIZE // 2, 1, board, 3)
-# Maintenant: Player_AI("blue", board, 3)
-
 player_blue = Player_AI("blue", board, 3)
 player_orange = Player_AI("orange", board, 3)
 
 board.add_player(player_blue)
 board.add_player(player_orange)
-"""
+
+def demo():
+    def test():
+        player_blue.move_down()
+        player_orange.move_up()
+        board.show_stadium()
+
+    def test1():
+        player_orange.move_left()
+        player_blue.move_down()
+        board.show_stadium()
+        
+    for i in range(5):
+        sleep(0.5)
+        test()
+
+    for i in range(15):
+        sleep(0.5)
+        test1()
+
+demo()
+"""   
