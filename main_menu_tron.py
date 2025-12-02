@@ -3,8 +3,20 @@
 #2. REMAP de touche
 #3. Credit et info sur la config (jourbnal de botrfd)
 
+"""
+--------- IMPORTANT -----------
+Render TODO, fait un systeme de gestion input
+
+Fait un meilleur systeme ou tes inputs se retourne vraiment 
+En gros dans tes inputs bindung utiliser des fonction inputs
+De plus, fait un systeme de boucle infini (mais on doit pouvoir acceder au input a l'exterieur de la fonction stp), ou chaque joueur appue sur une touche les uns après les autres...
+Tu peux gerer tout le reste après c'est pas la prio.
+
+"""
+
 import os
 from copy import deepcopy
+import threading
 
 if os.name == 'nt': import msvcrt
 else: import curses
@@ -23,6 +35,16 @@ class Input_gestion():
         while True:
             clear()
             pinput=ord(msvcrt.getwch())
+            # return pinput ?
+
+    def inputs_linux(self):
+
+        def main(stdscr,self=self):
+            while True:
+                pinput = stdscr.getch() # Pourquoi clear? si on l'uilise dans le jeu tout ca se supprimer?
+                return pinput
+
+        return curses.wrapper(main) # ? Il faut les retourner un jour...
 
     def initbindingwin(self):
         for inp in range(4):
@@ -42,25 +64,13 @@ class Input_gestion():
         if __name__ == '__main__':
             curses.wrapper(main)
 
-    def inputs_linux(self):
-
-        def main(stdscr,self=self):
-            while True:
-                pinput = stdscr.getch()
-                clear()
-                print(pinput)
-
-        if __name__ == '__main__':
-            curses.wrapper(main)
-
-
 def start_game():
     print("t'as crue le jeu il est fini?")
 
 joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]
 
 
-class menu:
+class Menu:
     def __init__(self):
         print("""
  _______ ______ _______ _______ 
@@ -68,15 +78,16 @@ class menu:
     _    _____) )     _ _     _ 
    | |  |  __  / |   | | |   | |
    | |  | |  \ \ |___| | |   | |
-   |_|  |_|   |_\_____/|_|   |_|""")
+   |_|  |_|   |_\_____/|_|   |_|\n""")
         self.menu_count = 0
         self.menu = {}
+        self.pointer = []
         
     def create_selection(self, menu_name, fonction):
         self.menu_count += 1
-        self.menu[menu_name] = [deepcopy(self.menu_count), " ", fonction]
-        print(f"     [{self.pointer[self.menu_count]}] - {menu_name}")
-
+        self.menu[menu_name] = [deepcopy(self.menu_count), "*", fonction]
+        self.pointer.append(" ")
+        print(f"     [{self.pointer[self.menu[menu_name][0] - 1]}] - {menu_name}")
 
     def input_binding(self):
 
@@ -84,10 +95,36 @@ class menu:
         if os.name == 'nt':
             joueur[0].initbindingwin()
             joueur[1].initbindingwin()
-            execution_menu(joueur)
         else:
             joueur[0].initbindinglinux()
             joueur[1].initbindinglinux()
-            execution_menu(joueur)
+        
+    def credit(self):
+        clear()
+        print("""
+- Input management, music, menu : Renderaction
+- AI system, threading, animation, game system : @archibarbu
 
-execution_menu()
+This game is under MIT license.
+Feel free to contact : perso[aroba]archibarbu[dot]art
+Don't hesitate to commit !
+Thanks everyone.
+
+          ,'""`.
+         / _  _ \
+         |(@)(@)|
+         )  __  (
+        /,'))((`.\
+       (( ((  )) ))      hh
+        `\ `)(' /'
+""")
+        
+"""
+menu = Menu()
+menu.create_selection("Input Binding", menu.input_binding)
+menu.create_selection("Start Game", start_game)
+menu.create_selection("credit", menu.credit)
+"""
+
+input = Input_gestion()
+print(input.inputs_linux())

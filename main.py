@@ -19,7 +19,7 @@ from random import uniform, gauss, choice, randint #Pour tout les choix aléatoi
 from copy import deepcopy #Pour copier une instance, en changeant sont adresse mémoire
 from time import sleep, mktime, localtime, ctime # ctime sec (timestamp) -> str #Gestion du temps
 import json # Gestion fichier .json, utile pour sauvegarde, lecture
-import threading
+import threading # Gerer l'execution de fonction en parrallèle. 
 
 COLOR = {
     "black": "\033[30m",
