@@ -1,2 +1,0 @@
-resultat = []
-print(bool(resultat))

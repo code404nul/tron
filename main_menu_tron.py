@@ -124,7 +124,8 @@ menu = Menu()
 menu.create_selection("Input Binding", menu.input_binding)
 menu.create_selection("Start Game", start_game)
 menu.create_selection("credit", menu.credit)
-"""
+
 
 input = Input_gestion()
 print(input.inputs_linux())
+"""
