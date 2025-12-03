@@ -14,14 +14,16 @@ Tu peux gerer tout le reste après c'est pas la prio.
 
 """
 
-import os
 from copy import deepcopy
-import threading
-
-if os.name == 'nt': import msvcrt
+from os import name, system
+import threading # Gerer l'execution de fonction en parrallèle. 
+if name == 'nt': import msvcrt
 else: import curses
 
-clear= lambda: os.system('cls' if os.name=='nt' else 'clear')
+if name == 'nt': import msvcrt
+else: import curses
+
+clear= lambda: system('cls' if name=='nt' else 'clear')
 
 class Input_gestion():
 
@@ -33,7 +35,7 @@ class Input_gestion():
 
     def inputs_windows(self):
         while True:
-            clear()
+            system("clear")
             pinput=ord(msvcrt.getwch())
             # return pinput ?
 
@@ -48,7 +50,7 @@ class Input_gestion():
 
     def initbindingwin(self):
         for inp in range(4):
-            clear()
+            system("clear")
             print(self)
             self.input_table[inp]=ord(msvcrt.getwch())
         print(self)
@@ -56,7 +58,7 @@ class Input_gestion():
     def initbindinglinux(self):
         def main(stdscr):
             for inp in range(4):
-                clear()
+                system("clear")
                 print(self)
                 self.input_table[inp]=stdscr.getch()
             print(self)
@@ -64,8 +66,6 @@ class Input_gestion():
         if __name__ == '__main__':
             curses.wrapper(main)
 
-def start_game():
-    print("t'as crue le jeu il est fini?")
 
 joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]
 
@@ -92,7 +92,7 @@ class Menu:
     def input_binding(self):
 
         joueur = [Input_gestion(), Input_gestion()]
-        if os.name == 'nt':
+        if name == 'nt': # TODO
             joueur[0].initbindingwin()
             joueur[1].initbindingwin()
         else:
@@ -100,7 +100,7 @@ class Menu:
             joueur[1].initbindinglinux()
         
     def credit(self):
-        clear()
+        system("clear")
         print("""
 - Input management, music, menu : Renderaction
 - AI system, threading, animation, game system : @archibarbu
@@ -118,7 +118,7 @@ Thanks everyone.
        (( ((  )) ))      hh
         `\ `)(' /'
 """)
-        
+
 """
 menu = Menu()
 menu.create_selection("Input Binding", menu.input_binding)

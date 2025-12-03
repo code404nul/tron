@@ -13,13 +13,14 @@ https://www.datacamp.com/tutorial/forward-propagation-neural-networks
 https://youtu.be/lpYfrshSZ4I?si=2HrP-vuHLTGbbBag On peut dire se que l'on veut, c'est les indiens qui sont les plus pédagoge et poussé?
 """
 
-from os import system, path, get_terminal_size #Pour l'interaction ordi-utilisateur, on va souvent utiliser system pour "clear" la console
+from os import system, path, get_terminal_size, name #Pour l'interaction ordi-utilisateur, on va souvent utiliser system pour "clear" la console
 from math import exp #Preatique pour l'exp
 from random import uniform, gauss, choice, randint #Pour tout les choix aléatoire
 from copy import deepcopy #Pour copier une instance, en changeant sont adresse mémoire
 from time import sleep, mktime, localtime, ctime # ctime sec (timestamp) -> str #Gestion du temps
 import json # Gestion fichier .json, utile pour sauvegarde, lecture
 import threading # Gerer l'execution de fonction en parrallèle. 
+
 
 COLOR = {
     "black": "\033[30m",
@@ -352,18 +353,54 @@ class Player_AI(Player):
         }
     }
     
-    def __init__(self, color, board, presistion, cross_over=None, player_name=None):
-
-        config = self.DEFAULT_CONFIG[color]
-        super().__init__(
-            symbol=config["symbol"],
-            color=color,
-            x=config["x"],
-            y=config["y"],
-            board=board, 
-            player_name=player_name)
+    _SENTINEL = object() # https://stackoverflow.com/questions/39313943/sentinel-object-and-its-applications
+    
+    def __init__(self, color=_SENTINEL, board=_SENTINEL, presistion=_SENTINEL, cross_over=None, player_name=None, brain=None, config_file=None):
+        if config_file:
+            save = SaveManager(filename=config_file)
+            data = save.load()
+            
+            if board is self._SENTINEL:
+                raise ValueError("board est obligatoire même avec config_file")
+            
+            color = data["color"]
+            presistion = data["precistion"]
+            player_name = data["name"]
+            x, y = data["position"]
+            symbol = data["symbol"]
+            
+            super().__init__(
+                symbol=symbol,
+                color=color,
+                x=x,
+                y=y,
+                board=board,
+                player_name=player_name
+            )
+            
+            self.precistion = presistion
+            self.brain = NeuralNetwork(presistion)
+            
+            for layer_index, layer_data in enumerate(data["brain"], start=1):
+                for neuron_index, neuron_data in enumerate(layer_data):
+                    self.brain.layers[layer_index][neuron_index].bias = neuron_data["bias"]
+                    self.brain.layers[layer_index][neuron_index].weights = neuron_data["weights"]
+        else:
+            if color is self._SENTINEL or board is self._SENTINEL or presistion is self._SENTINEL:
+                raise ValueError("color, board et presistion sont obligatoires sans config_file")
+            
+            config = self.DEFAULT_CONFIG[color]
+            super().__init__(
+                symbol=config["symbol"],
+                color=color,
+                x=config["x"],
+                y=config["y"],
+                board=board, 
+                player_name=player_name
+            )
+            self.precistion = presistion
+            self.brain = NeuralNetwork(presistion).crossover(cross_over) if cross_over else NeuralNetwork(presistion)
         
-        self.brain = NeuralNetwork(presistion).crossover(cross_over) if cross_over else NeuralNetwork(presistion)
         self.ennemy = None
     
     def define_ennemy(self):
@@ -384,6 +421,36 @@ class Player_AI(Player):
         self.move(*direction)
     
     def get_score(self): return self.score #TODO rendre ca moins degeulasse
+
+    def save_brain(self, name):
+        save = SaveManager(filename=f"models/{name}.json")
+        brain = []
+        for i in range(1, len(self.brain.layers)):
+            layer_data = []
+            for layers in self.brain.layers[i]:
+                if isinstance(layers, list):
+                    for neuron in layers:
+                        neuron_data = {
+                            "bias": neuron.bias,
+                            "weights": neuron.weights
+                        }
+                        layer_data.append(neuron_data)
+                else: 
+                    neuron_data = {
+                        "bias": neuron.bias,
+                        "weights": neuron.weights
+                    }
+                    layer_data.append(neuron_data)
+            brain.append(layer_data)
+            
+        save.save({
+            "brain": brain,
+            "precistion" : self.precistion,
+            "name": self.player_name,
+            "color": self.color,
+            "symbol": self.symbol,
+            "position": [self.x, self.y],
+        })
 
 
 class Board:
@@ -551,6 +618,7 @@ class NEAT():
         board_instance_a.add_player(orange_player)
 
         color = "green" if gen_i/self.gen < 1 else "blue" if gen_i/self.gen < 2 else "red"
+        # TODO *FIX* color
 
         for i in range(1, len(blue_player_pos)):
             print()
@@ -569,7 +637,7 @@ class NEAT():
     def create_pop(self):
         elite_size = self.pop_n // 4
         
-        blue_players = [p for p in self.all_players if p.color == "blue"]
+        blue_players = [p for p in self.all_players if p.color == "blue"] # ILLOGISME
         orange_players = [p for p in self.all_players if p.color == "orange"]
         
         blue_elite = blue_players[:elite_size]
@@ -604,9 +672,9 @@ class NEAT():
     def gen_play(self):
         best_overall = None
         best_overall_score = 0
+        self.best_player = None
         
         for gen_i in range(self.gen):
-            
             for match_i in range(self.pop_n // 2):
                 self.play(match_i)
                 
@@ -622,22 +690,42 @@ class NEAT():
                 best_overall_score = best_blue_players[0].score
 
                 self.best_overall_match_id = self.pop[0].index(best_blue_players[0])
+                self.best_player = deepcopy(best_blue_players[0])
             
             if best_orange_players and best_orange_players[0].score > best_overall_score:
                 best_overall = deepcopy(best_orange_players[0].brain)
                 best_overall_score = best_orange_players[0].score
                 self.best_overall_match_id = self.pop[1].index(best_orange_players[0])
 
+                self.best_player = deepcopy(best_orange_players[0])
+
             self.rewind_game(gen_i)
             self.create_pop()
 
         print(best_overall_score)
         return best_overall
-                    
-
-AI_game = NEAT(200, 30, 2, randomness=0.4)
-AI_game.gen_play()
+    
+    def save_winner(self):  
+        self.best_player.save_brain("Jhon")
+        print("Tout c'est bien passé!")
+        return None
 """
+AI_game = NEAT(20, 3, 2, randomness=0.4)
+AI_game.gen_play()
+stop_scroll_art()
+AI_game.save_winner()
+"""
+
+board = Board()
+player_blue = Player_AI(board=board, config_file="models/Jhon.json")
+player_orange = Player_AI("orange", board=board, presistion=3)
+
+board.add_player(player_blue)
+board.add_player(player_orange)
+
+board.show_stadium()
+"""   
+
 board = Board()
 player_blue = Player_AI("blue", board, 3)
 player_orange = Player_AI("orange", board, 3)
@@ -665,4 +753,4 @@ def demo():
         test1()
 
 demo()
-"""   
+"""
