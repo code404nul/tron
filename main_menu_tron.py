@@ -72,22 +72,35 @@ joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]
 
 class Menu:
     def __init__(self):
-        print("""
+        print(r"""
  _______ ______ _______ _______ 
 (_______|_____ (_______|_______)
     _    _____) )     _ _     _ 
    | |  |  __  / |   | | |   | |
    | |  | |  \ \ |___| | |   | |
-   |_|  |_|   |_\_____/|_|   |_|\n""")
+   |_|  |_|   |_\_____/|_|   |_|""")
         self.menu_count = 0
         self.menu = {}
         self.pointer = []
+
+
+    def __str__(self):
+        print(r"""
+ _______ ______ _______ _______ 
+(_______|_____ (_______|_______)
+    _    _____) )     _ _     _ 
+   | |  |  __  / |   | | |   | |
+   | |  | |  \ \ |___| | |   | |
+   |_|  |_|   |_\_____/|_|   |_|""")
+        for _ in range(self.menu_count):
+            
+
         
     def create_selection(self, menu_name, fonction):
         self.menu_count += 1
         self.menu[menu_name] = [deepcopy(self.menu_count), "*", fonction]
         self.pointer.append(" ")
-        print(f"     [{self.pointer[self.menu[menu_name][0] - 1]}] - {menu_name}")
+        print(f"\n     [{self.pointer[self.menu[menu_name][0] - 1]}] - {menu_name}")
 
     def input_binding(self):
 
@@ -101,7 +114,7 @@ class Menu:
         
     def credit(self):
         system("clear")
-        print("""
+        print(r"""
 - Input management, music, menu : Renderaction
 - AI system, threading, animation, game system : @archibarbu
 
@@ -119,13 +132,12 @@ Thanks everyone.
         `\ `)(' /'
 """)
 
-"""
+""""""
+
 menu = Menu()
 menu.create_selection("Input Binding", menu.input_binding)
-menu.create_selection("Start Game", start_game)
 menu.create_selection("credit", menu.credit)
 
 
 input = Input_gestion()
 print(input.inputs_linux())
-"""
