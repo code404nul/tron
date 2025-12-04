@@ -33,7 +33,7 @@ COLOR = {
     "reset": "\033[0m"
 }
 
-GENRATING_MSG = """
+GENRATING_MSG = r"""
    ___                          _   _                   
   / _ \___ _ __   ___ _ __ __ _| |_(_)_ __   __ _       
  / /_\/ _ \ '_ \ / _ \ '__/ _` | __| | '_ \ / _` |      
@@ -358,7 +358,7 @@ class Player_AI(Player):
     def __init__(self, color=_SENTINEL, board=_SENTINEL, presistion=_SENTINEL, cross_over=None, player_name=None, brain=None, config_file=None):
         if config_file:
             save = SaveManager(filename=config_file)
-            data = save.load()
+            data = save.load()[0]
             
             if board is self._SENTINEL:
                 raise ValueError("board est obligatoire même avec config_file")
@@ -366,25 +366,33 @@ class Player_AI(Player):
             color = data["color"]
             presistion = data["precistion"]
             player_name = data["name"]
-            x, y = data["position"]
             symbol = data["symbol"]
             
+            config = self.DEFAULT_CONFIG[color]
             super().__init__(
                 symbol=symbol,
                 color=color,
-                x=x,
-                y=y,
+                x=config["x"],
+                y=config["y"],
                 board=board,
                 player_name=player_name
             )
             
-            self.precistion = presistion
             self.brain = NeuralNetwork(presistion)
             
-            for layer_index, layer_data in enumerate(data["brain"], start=1):
-                for neuron_index, neuron_data in enumerate(layer_data):
-                    self.brain.layers[layer_index][neuron_index].bias = neuron_data["bias"]
-                    self.brain.layers[layer_index][neuron_index].weights = neuron_data["weights"]
+            for hidden_layer in data["brain"][0]:
+                for depth in range(presistion):
+                    for i in range(self.brain.depth):
+                        current_neuron = self.brain.layers[1][depth][i] 
+                        current_neuron.a = hidden_layer[0]["bias"]
+                        current_neuron.weights = hidden_layer[0]["weights"]
+            
+            for output_layer in data["brain"][1]:
+                if len(output_layer):
+                   for i in range(len(self.brain.layers[2])):
+                       self.brain.layers[2][i].a = output_layer["bias"]
+                       self.brain.layers[2][i].weights = output_layer["weights"]
+
         else:
             if color is self._SENTINEL or board is self._SENTINEL or presistion is self._SENTINEL:
                 raise ValueError("color, board et presistion sont obligatoires sans config_file")
@@ -426,7 +434,7 @@ class Player_AI(Player):
         save = SaveManager(filename=f"models/{name}.json")
         brain = []
         for i in range(1, len(self.brain.layers)):
-            layer_data = []
+            layer_data = [[]]
             for layers in self.brain.layers[i]:
                 if isinstance(layers, list):
                     for neuron in layers:
@@ -434,7 +442,7 @@ class Player_AI(Player):
                             "bias": neuron.bias,
                             "weights": neuron.weights
                         }
-                        layer_data.append(neuron_data)
+                        layer_data[0].append([neuron_data])
                 else: 
                     neuron_data = {
                         "bias": neuron.bias,
@@ -709,6 +717,7 @@ class NEAT():
         self.best_player.save_brain("Jhon")
         print("Tout c'est bien passé!")
         return None
+
 """
 AI_game = NEAT(20, 3, 2, randomness=0.4)
 AI_game.gen_play()
@@ -724,6 +733,7 @@ board.add_player(player_blue)
 board.add_player(player_orange)
 
 board.show_stadium()
+
 """   
 
 board = Board()
