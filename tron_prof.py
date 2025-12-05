@@ -35,6 +35,13 @@ CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR # C'est utilse pour le bord 
 
 class SaveManager:
     def __init__(self, filename="save.json"):
+        """
+        Docstring for __init__
+        
+        La classe qui permet d'interagire avec les json
+        :param self: Description
+        :param filename: De quel json parle ton?
+        """
         if not path.exists(filename):
             with open(filename, "w") as f:
                 f.write("[]") # Il est nesséssaire de mettre une liste vide dans le fichier, sinon quand on dump le json il y aura une erreur 
@@ -46,6 +53,13 @@ class SaveManager:
         
     
     def save(self, data):
+        """
+        Docstring for save
+        
+        Va enregistrer data dans le json spécifié
+        :param self: Description
+        :param data: dict : Les nouvelles doner a mettre donc
+        """
         try:
             self.json_content.append(data)
             with open(self.filename, "w") as f:
@@ -55,10 +69,22 @@ class SaveManager:
             print(f"Aie Aie Aie, une erreur...: {e}")
             return False
     
-    def load(self): return self.json_content
+    def load(self): return self.json_content # Je recupere le contenu du json
 
 class Player:
     def __init__(self, symbol, color, x, y, player_name=None):
+        """
+        Docstring for __init__
+        
+        C'est la classe pour un joueur, il permet de gerer tout ce qui conserne un joueur personnelement, ces deplacement, sont rendu, ect...
+        
+        :param self: Description
+        :param symbol: Le symbole qui lui sera afficher dans la console
+        :param color: La couleur qui sera afficher quand le joueur bouge
+        :param x: ca positions x
+        :param y: ca position y
+        :param player_name: le nom du joueur
+        """
         self.symbol = symbol
         self.color = color
         self.x = x
@@ -70,9 +96,20 @@ class Player:
         self.score = 0
         self.loser = False
     
-    def get_pos(self): return self.y * CONFIG_REAL_SIZE + self.x 
+    def get_pos(self): return self.y * CONFIG_REAL_SIZE + self.x # Quel lignes on est ? * Le nombre de colone par ligne + Les colones ou on est.
     
     def move(self, dx, dy):
+        """
+        Docstring for move
+        
+        Elle mermet d'updater ca position dans ces variables, mais elle verifie aussi que elle ne va pas sur un bord
+        :param self: Description
+        :param dx: pour gauche et droit -1 gauche, 1 droite
+        :param dy: pour bas et haut, 1 pour le bas, -1 pour le haut
+        
+        Return bool, si il y a eu deplacement ou pas.
+        """
+        
         new_x = self.x + dx
         new_y = self.y + dy
         
@@ -87,15 +124,23 @@ class Player:
             return True
         return False
     
+    # Toutes ces fonctions permet de bouger le joueur, retourne la meme chose, juste c'est nommé pour que ca soit plus visuel est simple (partique lors de test)
     def move_left(self): return self.move(-1, 0)
     def move_right(self): return self.move(1, 0)
     def move_up(self):  return self.move(0, -1)
     def move_down(self): return self.move(0, 1)
-    
-    def render(self): return f"{COLOR[self.color]}{self.symbol}{COLOR['reset']}"
-    
+
 class Board:
     def __init__(self, players=None):
+        """
+        Cette classe permet de géré les comportement entre joueur, tel que l'affichage, la detection de colistion, game over,...
+        
+        players : Peut prendre en parametre du debut des joueur, mais déconseiller, car veirifie pas que les joueur s'appelle différament, (ce qui peut provoquer des probleme de nom)
+        
+        POurquoi pas de changement ? Ca fonctionne donc on touche pas. et c'est pas essentiel 
+        
+        de base la fonction add_players vient d'un besoin dans main.py, car les joueur_ai on besoin d'un plateau 
+        """
         self.board = [] # Tout les caractère afficher sont dans un tableau... Il affiche les charactere du tableau lignes par lignes
         self._create_board()
         # liste vide, ou non renvoie faux en bool - pytonite ^^
@@ -117,7 +162,13 @@ class Board:
         
     
     def _create_board(self): #fonction privée
-
+        """
+        Docstring for _create_board
+        
+        Crée la premiere fonction qui va initaliser la liste self.board, pour afficher les bords.
+        
+        Ne retourne rien, car update self.board aux seins de l'instance
+        """
         self.board = [("#", "white")] * CONFIG_REAL_SIZE # Bord du dessus
         
         #Ligne des cotées
@@ -129,6 +180,12 @@ class Board:
         self.board += [("#", "white")] * CONFIG_REAL_SIZE #Bord du dessous
     
     def _check_collision(self):
+        """
+        Docstring for _check_collision
+        
+        Cette fonction permet de detecter la colistion, que ca soit sur soit meme, ou sur les autres
+        Return bool : Si un des joueurs et censé mourir
+        """
         exit_true = False # Le exit_false et utile dans le cas ou 2 joueur se rentre dessus, plus de prévisition a la prochaine ligne
         for player in self.players:
             
@@ -147,6 +204,13 @@ class Board:
         return exit_true
 
     def _game_over(self):
+        """
+        Docstring for _game_over
+        
+        Lors se que la partie est termine le programme affiche cette ecran. 
+        
+        Return None
+        """
         sleep(1)
         system("clear")
         
@@ -180,12 +244,28 @@ class Board:
         quit() # TODO on devrait revenir sur le menu
 
     def add_player(self, player): 
+        """
+        Docstring for add_player
+        
+        permet de reférencer les joueur dans la classe. Pour la version main.py, elle est utiliser comme platforme de référence pour connaitre les autres joueurs
+        :param player: La classe du joueur
+        
+        Return None
+        """
         for old_player in self.players:
             if old_player.player_name == player.player_name:
                 ValueError("Les noms des joueurs doivent être différents, t'es un fou toi.")
         self.players.append(player)
     
     def show_stadium(self):
+        """
+        Docstring for show_stadium
+        
+        Fonction qui va permettre d"afficher le stade, les joueur et exec les game over
+        doit etre executer A CHAQUE MOUVEMENT 
+        
+        Return none
+        """
         system("clear")
         
         if self._check_collision():
@@ -211,6 +291,7 @@ class Board:
             else:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
+        return None
 # ICI pur test
 player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
 player_orange = Player("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2)
