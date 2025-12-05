@@ -20,9 +20,6 @@ import threading # Gerer l'execution de fonction en parrallèle.
 if name == 'nt': import msvcrt
 else: import curses
 
-if name == 'nt': import msvcrt
-else: import curses
-
 clear= lambda: system('cls' if name=='nt' else 'clear')
 
 class Input_gestion():
@@ -31,7 +28,12 @@ class Input_gestion():
         self.input_table=tab
 
     def __str__(self):
-        return "UP:"+chr(self.input_table[0])+"\n"+"DOWN:"+chr(self.input_table[1])+"\n"+"LEFT:"+chr(self.input_table[2])+"\n"+"RIGHT:"+chr(self.input_table[3])
+        return f"""
+UP:{chr(self.input_table[0])}
+DOWN:{chr(self.input_table[1])}
+LEFT:{chr(self.input_table[2])}
+RIGHT:{chr(self.input_table[3])}
+"""
 
     def inputs_windows(self):
         while True:
@@ -54,6 +56,7 @@ class Input_gestion():
             print(self)
             self.input_table[inp]=ord(msvcrt.getwch())
         print(self)
+        return self
 
     def initbindinglinux(self):
         def main(stdscr):
@@ -62,6 +65,7 @@ class Input_gestion():
                 print(self)
                 self.input_table[inp]=stdscr.getch()
             print(self)
+            return self
 
         if __name__ == '__main__':
             curses.wrapper(main)
@@ -69,52 +73,15 @@ class Input_gestion():
 
 joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]
 
-
-class Menu:
-    def __init__(self):
-        print(r"""
- _______ ______ _______ _______ 
-(_______|_____ (_______|_______)
-    _    _____) )     _ _     _ 
-   | |  |  __  / |   | | |   | |
-   | |  | |  \ \ |___| | |   | |
-   |_|  |_|   |_\_____/|_|   |_|""")
-        self.menu_count = 0
-        self.menu = {}
-        self.pointer = []
-
-
-    def __str__(self):
-        print(r"""
- _______ ______ _______ _______ 
-(_______|_____ (_______|_______)
-    _    _____) )     _ _     _ 
-   | |  |  __  / |   | | |   | |
-   | |  | |  \ \ |___| | |   | |
-   |_|  |_|   |_\_____/|_|   |_|""")
-        for _ in range(self.menu_count):
-            
-
-        
-    def create_selection(self, menu_name, fonction):
-        self.menu_count += 1
-        self.menu[menu_name] = [deepcopy(self.menu_count), "*", fonction]
-        self.pointer.append(" ")
-        print(f"\n     [{self.pointer[self.menu[menu_name][0] - 1]}] - {menu_name}")
-
-    def input_binding(self):
-
-        joueur = [Input_gestion(), Input_gestion()]
-        if name == 'nt': # TODO
-            joueur[0].initbindingwin()
-            joueur[1].initbindingwin()
-        else:
-            joueur[0].initbindinglinux()
-            joueur[1].initbindinglinux()
-        
-    def credit(self):
-        system("clear")
-        print(r"""
+asciiart=[r"""
+ ███████████                              
+▒█▒▒▒███▒▒▒█                              
+▒   ▒███  ▒  ████████   ██████  ████████  
+    ▒███    ▒▒███▒▒███ ███▒▒███▒▒███▒▒███ 
+    ▒███     ▒███ ▒▒▒ ▒███ ▒███ ▒███ ▒███ 
+    ▒███     ▒███     ▒███ ▒███ ▒███ ▒███ 
+    █████    █████    ▒▒██████  ████ █████
+   ▒▒▒▒▒    ▒▒▒▒▒      ▒▒▒▒▒▒  ▒▒▒▒ ▒▒▒▒▒ """,r"""
 - Input management, music, menu : Renderaction
 - AI system, threading, animation, game system : @archibarbu
 
@@ -130,14 +97,33 @@ Thanks everyone.
         /,'))((`.\
        (( ((  )) ))      hh
         `\ `)(' /'
-""")
+"""]
 
-""""""
+def score(): pass
 
-menu = Menu()
-menu.create_selection("Input Binding", menu.input_binding)
-menu.create_selection("credit", menu.credit)
+class Menu:
+
+    def __init__(self,tron_ascii=asciiart[0]):
+        self.main_interface=tron_ascii
+        self.liste_des_selections=["Demmarer le jeu","Touches Clavier","Credits","Score"]
+
+    def refresh_menu(self,placement):
+        print(self.main_interface)
+        for i in range(len(self.liste_des_selections)):
+            print(f"-[{"*" if placement == i else " "}] {self.liste_des_selections[i]}")
 
 
-input = Input_gestion()
-print(input.inputs_linux())
+    def lancer_interaction_avec_menu(self):
+        placement = 0
+        if name == 'nt':
+            while True:
+                youpi = ord(msvcrt.getwch())
+                if youpi == 27 or youpi == 0: break
+                elif youpi == 122 and placement != 0: placement += -1
+                elif youpi == 115 and placement < len(self.liste_des_selections)-1: placement += 1
+                self.refresh_menu(placement)
+        else:
+            pass
+
+
+Input_gestion().inputs_linux()
