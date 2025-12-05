@@ -11,11 +11,13 @@ Ajouter 10 pts pour chaque mouvements, et 100 pts pour le vainqueur
 
 Pour bouger, vous pouvez faire une remap de touche, par défaut : 
 Z/Q/S/D et les fleches pour le deuxième joueurs
+
+TODO direction self colistion
 """
 
 from os import system, path # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json
-from time import sleep, mktime, localtime, ctime # ctime for convert sec to date str
-import json
+from time import sleep, mktime, localtime, ctime # Time est utiliser pour gerer le temps. ctime for convert sec to date str
+import json # La lib json permet de manager les json 
 
 COLOR = {
     "black": "\033[30m",
@@ -29,9 +31,9 @@ COLOR = {
 } # Toutes ces valeurs permette de d'afficher des couleur dans le terminal, je ne l'ai ai pas trouver au hasard, j'ai trouver ca sur internet.
 
 
-CONFIG_SIZE: int = 27 - 5 # Utiliser pour les bord gauche et droit
+CONFIG_SIZE_Y: int = 27 - 5 # Utiliser pour les bord gauche et droit en gros le nombre de character sur la vertical (colone)
 CONFIG_FACTOR: int = 2 # Le facteur d'agrandissement pour le bord Gauche et droit
-CONFIG_REAL_SIZE: int = CONFIG_SIZE * CONFIG_FACTOR # C'est utilse pour le bord haut et bas, car la longeur de chaque case de charactère et plus petite
+CONFIG_SIZE_X: int = CONFIG_SIZE_Y * CONFIG_FACTOR # C'est utilse pour le bord haut et bas, car la longeur de chaque case de charactère et plus petite que la haute des caractere en gros le nombre de character sur l'horizontal (lignes)
 
 class SaveManager:
     def __init__(self, filename="save.json"):
@@ -59,6 +61,8 @@ class SaveManager:
         Va enregistrer data dans le json spécifié
         :param self: Description
         :param data: dict : Les nouvelles doner a mettre donc
+        
+        Return bool, si la save c'est bien passer UwU
         """
         try:
             self.json_content.append(data)
@@ -92,12 +96,12 @@ class Player:
         self.previous_position = [self.get_pos()] # La previous position contient toutes les positions
         self.trace = "░"
         
-        self.player_name = player_name if player_name else f"Player_{color}"
+        self.player_name = player_name if player_name else f"Player_{color}" # Si le playername n'est pas spécifier, il en crée un nouveau appeler PLayer_couleur.
         self.score = 0
         self.loser = False
     
-    def get_pos(self): return self.y * CONFIG_REAL_SIZE + self.x # Quel lignes on est ? * Le nombre de colone par ligne + Les colones ou on est.
-    
+    def get_pos(self): return self.y * CONFIG_SIZE_X + self.x # Quel lignes on est ? * Le nombre de case par ligne + Les colones ou on est. voir Board.board
+    # pas oublier de fetch
     def move(self, dx, dy):
         """
         Docstring for move
@@ -114,7 +118,7 @@ class Player:
         new_y = self.y + dy
         
         #Verifie Qu'il est dans la grille 1, taille min
-        if 1 <= new_x < CONFIG_REAL_SIZE - 1 and 1 <= new_y < CONFIG_SIZE - 1:
+        if 1 <= new_x < CONFIG_SIZE_X - 1 and 1 <= new_y < CONFIG_SIZE_Y - 1:
             self.previous_position.append(self.get_pos())
             
             self.x = new_x
@@ -169,15 +173,15 @@ class Board:
         
         Ne retourne rien, car update self.board aux seins de l'instance
         """
-        self.board = [("#", "white")] * CONFIG_REAL_SIZE # Bord du dessus
+        self.board = [("#", "white")] * CONFIG_SIZE_X # Bord du dessus
         
         #Ligne des cotées
-        for i in range(CONFIG_SIZE - 2):
+        for i in range(CONFIG_SIZE_Y - 2):
             self.board.append(("#", "white"))
-            self.board += [(" ", "black")] * (CONFIG_REAL_SIZE - 2)
+            self.board += [(" ", "black")] * (CONFIG_SIZE_X - 2)
             self.board.append(("#", "white"))
             
-        self.board += [("#", "white")] * CONFIG_REAL_SIZE #Bord du dessous
+        self.board += [("#", "white")] * CONFIG_SIZE_X #Bord du dessous
     
     def _check_collision(self):
         """
@@ -286,15 +290,15 @@ class Board:
                     char, color = player.symbol, player.color
                     break
                 
-            if (case + 1) % CONFIG_REAL_SIZE == 0: #tracer tout le chemil blic (et fait les saut a la lignes)
+            if (case + 1) % CONFIG_SIZE_X == 0: #tracer tout le chemil blic (et fait les saut a la lignes)
                 print(f"{COLOR[color]}{char}{COLOR['reset']}")
             else:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
         return None
 # ICI pur test
-player_blue = Player("O", "blue", CONFIG_REAL_SIZE // 2, 1)
-player_orange = Player("O", "orange", CONFIG_REAL_SIZE // 2, CONFIG_SIZE - 2)
+player_blue = Player("O", "blue", CONFIG_SIZE_X // 2, 1)
+player_orange = Player("O", "orange", CONFIG_SIZE_X // 2, CONFIG_SIZE_Y - 2)
 
 board_instance = Board()
 board_instance.add_player(player_blue)
