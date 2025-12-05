@@ -46,3 +46,10 @@ Bryan : voient la sortie du tunelle un peu de tunning poo et c'est kawaii, creat
 Jules : LA NSI MA MANQUEEERRRRRRRRR trop bien 2h de projet, quoi de mieux ? Implementation du NN, creation du NEAT, implementation du nn dans player_ai et documentation doc string (mais faudra retravailler cette partie) [0.0, 0.0, 0.0, 0.0] la liste du diable, DU DIABLE
 Bryan : Reglage des bugs du menu et des keybinds. tests... NOUVELLE IDEE ! Detect auto de la dispo du clavier, pb jestion qui qui qu'a apuier... du coup tout foutre en liste? bref...
 
+5/12/25 : 
+
+Creation de tron_prof.py le fichier reelement rendu, un peu de nétoyage, un peu de commentaire... 
+
+Bryan refonte des input et du menu (presque total)
+
+Ps: jhon.json est un tres tres mauv ais model presque pas entrainer, il a besoin de plus de temps pour faire ces preuves
