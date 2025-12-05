@@ -46,7 +46,7 @@ RIGHT:{chr(self.input_table[3])}
         def main(stdscr,self=self):
             while True:
                 pinput = stdscr.getch() # Pourquoi clear? si on l'uilise dans le jeu tout ca se supprimer?
-                return pinput
+                print(pinput)
 
         return curses.wrapper(main) # ? Il faut les retourner un jour...
 
@@ -127,3 +127,7 @@ class Menu:
 
 
 Input_gestion().inputs_linux()
+
+
+
+ #with open(filename, "r") as f:
