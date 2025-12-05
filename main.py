@@ -54,6 +54,8 @@ def del_recurrance(liste):
 
 def forth_and_back_animation():
     # Forth and Back by Al Sweigart al@inventwithpython.com 2024
+    # Coder par un mec sur internet. 
+    
     
     WIDTH = get_terminal_size()[0] - 1
     DELAY = 0.04
@@ -415,6 +417,7 @@ class Player_AI(Player):
         for player in self.board.players:
             if player.color != self.color: 
                 self.ennemy = player
+                print("oubdoubdoub")
             
     def analyse_board(self):
         trails = [pos for pos in self.ennemy.previous_position if pos != self.ennemy.get_pos()]
@@ -724,6 +727,7 @@ AI_game.gen_play()
 stop_scroll_art()
 AI_game.save_winner()
 """
+"""
 
 board = Board()
 player_blue = Player_AI(board=board, config_file="models/Jhon.json")
@@ -737,30 +741,27 @@ board.show_stadium()
 """   
 
 board = Board()
-player_blue = Player_AI("blue", board, 3)
+player_blue = Player_AI(board=board, config_file="models/Jhon.json")
 player_orange = Player_AI("orange", board, 3)
 
 board.add_player(player_blue)
 board.add_player(player_orange)
 
+player_blue.define_ennemy()
+
 def demo():
     def test():
-        player_blue.move_down()
+        player_blue.move_ai()
         player_orange.move_up()
         board.show_stadium()
-
     def test1():
         player_orange.move_left()
-        player_blue.move_down()
+        player_blue.move_ai()
         board.show_stadium()
         
-    for i in range(5):
+    for i in range(50):
         sleep(0.5)
         test()
 
-    for i in range(15):
-        sleep(0.5)
-        test1()
 
 demo()
-"""
