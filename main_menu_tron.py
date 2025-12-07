@@ -67,10 +67,11 @@ RIGHT:{chr(self.input_table[3])}
             return self
 
         if __name__ == '__main__':
-            curses.wrapper(main)
+            return curses.wrapper(main)
 
 
 joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]
+
 
 asciiart=[r"""
  ███████████
@@ -103,14 +104,19 @@ def score(): pass
 def demmarer_le_jeu(): pass
 
 def menu_touches_clavier():
-    joueur=[Input_gestion(),Input_gestion()]
+    joueur=[0,0]
     if name == 'nt':
-        joueur[0].initbindingwin()
-        joueur[1].initbindingwin()
+        joueur[0]=Input_gestion().initbindingwin()
+        clear()
+        joueur[1]=Input_gestion().initbindingwin()
     else:
-        joueur[0].initbindinglinux()
-        joueur[1].initbindinglinux()
+        joueur[0]=Input_gestion().initbindinglinux()
+        clear()
+        joueur[1]=Input_gestion().initbindinglinux()
     return joueur
+def credits():
+    clear()
+    print(asciiart[1])
 
 class Menu:
 
@@ -150,15 +156,27 @@ class Menu:
 
 
 menu=Menu()
-while True:
-    menu_selectionne = menu.lancer_interaction_avec_menu()
-    if menu_selectionne == 0:
-        break
-    if menu_selectionne == 1:
-        joueur = menu_touches_clavier()
-        break
+def lancer_menu_principal(menu=menu,joueur=joueur):
+    menu.refresh_menu()
+    while True:
+        menu_selectionne = menu.lancer_interaction_avec_menu()
+        if menu_selectionne == 0:
+            break
+        if menu_selectionne == 1:
+            joueur = menu_touches_clavier()
+            lancer_menu_principal()
+        if menu_selectionne == 2:
+            credits()
+            if name == 'nt': msvcrt.getwch()
+            else: stdscr.getch()
+            lancer_menu_principal()
+    return joueur
 
+joueur=lancer_menu_principal()
+
+joueur[0].input_table[0]=122
 print(joueur[0])
 print(joueur[1])
+
 
  #with open(filename, "r") as f:
