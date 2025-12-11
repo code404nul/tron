@@ -20,20 +20,38 @@ import threading # Gerer l'execution de fonction en parrallèle.
 if name == 'nt': import msvcrt
 else: import curses
 
-clear= lambda: system('cls' if name=='nt' else 'clear')
+clear= lambda: system('cls' if name == 'nt' else 'clear')
 
 class Input_gestion():
 
-    def __init__(self,tab=[95,95,95,95]):
-        self.input_table=tab
+    def __init__(self,tab = None):
+        if tab: self.input_table=tab
+        else: self.input_table = [[95,95,95,95],[95,95,95,95]]
 
-    def __str__(self):
-        return f"""
-UP:{chr(self.input_table[0])}
-DOWN:{chr(self.input_table[1])}
-LEFT:{chr(self.input_table[2])}
-RIGHT:{chr(self.input_table[3])}
-"""
+    def afficher(self,idjoueur = 3):
+        if idjoueur > 2 or idjoueur < 0:
+            print(f"""
+Joueur 1
+UP:{chr(self.input_table[0][0])}
+DOWN:{chr(self.input_table[0][1])}
+LEFT:{chr(self.input_table[0][2])}
+RIGHT:{chr(self.input_table[0][3])}
+
+Joueur 2
+UP:{chr(self.input_table[1][0])}
+DOWN:{chr(self.input_table[1][1])}
+LEFT:{chr(self.input_table[1][2])}
+RIGHT:{chr(self.input_table[1][3])}
+""")
+        else:
+            print(f"""
+Joueur {'1' if idjoueur == 0 else '2'}
+UP:{chr(self.input_table[idjoueur][0])}
+DOWN:{chr(self.input_table[idjoueur][1])}
+LEFT:{chr(self.input_table[idjoueur][2])}
+RIGHT:{chr(self.input_table[idjoueur][3])}
+""")
+
 
     def inputs_windows(self):
         while True:
@@ -50,27 +68,36 @@ RIGHT:{chr(self.input_table[3])}
         return curses.wrapper(main) # ? Il faut les retourner un jour...
 
     def initbindingwin(self):
-        for inp in range(4):
-            clear()
-            print(self)
-            self.input_table[inp]=ord(msvcrt.getwch())
-        print(self)
+        for idjoueur in range(2):
+            for inp in range(4):
+                clear()
+                self.afficher(idjoueur)
+                self.input_table[idjoueur][inp]=ord(msvcrt.getwch())
+            self.afficher(idjoueur)
         return self
 
     def initbindinglinux(self):
         def main(stdscr):
-            for inp in range(4):
-                clear()
-                print(self)
-                self.input_table[inp]=stdscr.getch()
-            print(self)
+            for idjoueur in range(2):
+                for inp in range(4):
+                    clear()
+                    self.afficher(idjoueur)
+                    self.input_table[idjoueur][inp]=stdscr.getch()
+                self.afficher(idjoueur)
             return self
 
         if __name__ == '__main__':
             return curses.wrapper(main)
 
+disposition=input("""
+1. AZERTY?
+2. QWERTY?
+""")
+if int(disposition) == 1: disposition_du_clavier = [122,115,113,100]
+else: disposition_du_clavier = [119,115,97,100]
+joueur=Input_gestion([disposition_du_clavier,[105,107,106,108]])
+input_pour_le_menu=disposition_du_clavier
 
-joueur=[Input_gestion([122,115,113,100]),Input_gestion([259,258,260,261])]
 
 
 asciiart=[r"""
@@ -104,16 +131,13 @@ def score(): pass
 def demmarer_le_jeu(): pass
 
 def menu_touches_clavier():
-    joueur=[0,0]
+    joueur=Input_gestion()
     if name == 'nt':
-        joueur[0]=Input_gestion().initbindingwin()
-        clear()
-        joueur[1]=Input_gestion().initbindingwin()
+        joueur.initbindingwin()
     else:
-        joueur[0]=Input_gestion().initbindinglinux()
-        clear()
-        joueur[1]=Input_gestion().initbindinglinux()
+        joueur.initbindinglinux()
     return joueur
+
 def credits():
     clear()
     print(asciiart[1])
@@ -136,18 +160,18 @@ class Menu:
         if name == 'nt':
             while True:
                 pinput = ord(msvcrt.getwch())
-                if pinput == 100: break
-                elif pinput == 122 and placement != 0: placement += -1
-                elif pinput == 115 and placement < len(self.liste_des_selections)-1: placement += 1
+                if pinput == input_pour_le_menu[3]: break
+                elif pinput == input_pour_le_menu[0] and placement != 0: placement += -1
+                elif pinput == input_pour_le_menu[1] and placement < len(self.liste_des_selections)-1: placement += 1
                 self.refresh_menu(placement)
             return placement
         else:
             def main(stdscr,placement=placement,self=self):
                 while True:
                     pinput = stdscr.getch()
-                    if pinput == 100: break
-                    elif pinput == 122 and placement > 0: placement += -1
-                    elif pinput == 115 and placement < len(self.liste_des_selections)-1: placement += 1
+                    if pinput == input_pour_le_menu[3]: break
+                    elif pinput == input_pour_le_menu[0] and placement > 0: placement += -1
+                    elif pinput == input_pour_le_menu[1] and placement < len(self.liste_des_selections)-1: placement += 1
                     self.refresh_menu(placement)
                 return placement
 
@@ -168,15 +192,15 @@ def lancer_menu_principal(menu=menu,joueur=joueur):
         if menu_selectionne == 2:
             credits()
             if name == 'nt': msvcrt.getwch()
-            else: stdscr.getch()
+            else:
+                def main(stdscr):
+                    stdscr.getch()
+                curses.wrapper(main)
             lancer_menu_principal()
     return joueur
 
 joueur=lancer_menu_principal()
 
-joueur[0].input_table[0]=122
-print(joueur[0])
-print(joueur[1])
 
 
  #with open(filename, "r") as f:
