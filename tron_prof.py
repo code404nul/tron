@@ -1,5 +1,6 @@
 """
 DO NOT TEST IN EDUPYTHON (for now)
+NE FONCTIONNE PAS SUR PYTHON 3.13 >= (sur linux)
 
 Arch & Renderaction - Tron game on console
 
@@ -11,9 +12,13 @@ Z/Q/S/D et les fleches pour le deuxième joueurs
 TODO direction self colistion
 """
 
-from os import system, path # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json
+from os import system, path, name # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
 from time import sleep, mktime, localtime, ctime # Time est utiliser pour gerer le temps. ctime for convert sec to date str
 import json # La lib json permet de manager les json 
+if name == "nt": # Si windows
+    import winsound # Gestion audio
+else: # Si linux
+    import ossaudiodev #Gestion audio
 
 COLOR = {
     "black": "\033[30m",
@@ -159,6 +164,7 @@ class Board:
 ░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░ 
       ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░     
                                                      ░                   """
+        
         
     
     def _create_board(self): #fonction privée
