@@ -15,21 +15,23 @@ Tu peux gerer tout le reste après c'est pas la prio.
 """
 
 from copy import deepcopy
-from os import name, system
+from os import name, system # récuperer le nom de l'os ('nt' sur windows et 'posix' sur linux) et permettre l'execution de system('cls')
 import threading # Gerer l'execution de fonction en parrallèle.
-if name == 'nt': import msvcrt
-else: import curses
+if name == 'nt': import msvcrt #msvcrt est une librairie interne qui permet de lire les inputs du clavier
+else: import curses #similaire à msvcrt mais pour linux
 
-clear= lambda: system('cls' if name == 'nt' else 'clear')
+clear= lambda: system('cls' if name == 'nt' else 'clear') #pour éviter d'écrire system('cls') à chaque fois, on va écrire clear()
 
-class Input_gestion():
+system('cls')
 
-    def __init__(self,tab = None):
-        if tab: self.input_table=tab
-        else: self.input_table = [[95,95,95,95],[95,95,95,95]]
+class Input_gestion(): #creation d'une class inputgestion pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier
 
-    def afficher(self,idjoueur = 3):
-        if idjoueur > 2 or idjoueur < 0:
+    def __init__(self,tab = None): #les controles des joueurs sont stocker dans une matrice tab de 2x4 pour les 2 joueurs et les 4 touches haut bas gauche droite
+        if tab: self.input_table=tab #si tab existe alors self.inputtable prend la valeur de tab
+        else: self.input_table = [[95,95,95,95],[95,95,95,95]] #sinon alors self.inputtable devient une matrice remplie de 95 qui correspond en ascii au '_'
+
+    def afficher(self,idjoueur = 3): #une fonction qui affiche de manière esthetique les inputs des joueur
+        if idjoueur > 2 or idjoueur < 0: #si l'id du joueur dont on veut print les touches est mal précisé alors la fonction print les touches des 2 joueurs
             print(f"""
 Joueur 1
 UP:{chr(self.input_table[0][0])}
@@ -42,8 +44,9 @@ UP:{chr(self.input_table[1][0])}
 DOWN:{chr(self.input_table[1][1])}
 LEFT:{chr(self.input_table[1][2])}
 RIGHT:{chr(self.input_table[1][3])}
-""")
-        else:
+""") #les str de type f permette de placer des variables à l'interieur du str avec { } sans devoir concatener
+
+        else: #si l'id est correctement specifié alors on print le joueur voulue
             print(f"""
 Joueur {'1' if idjoueur == 0 else '2'}
 UP:{chr(self.input_table[idjoueur][0])}
@@ -53,12 +56,11 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
 """)
 
 
-    def inputs_windows(self):
-        while True:
-            pinput=ord(msvcrt.getwch())
-            # return pinput ?
+    def inputs_windows(self): #cette fonction return la touche pressé sous forme decimal en ascii(ex: si 'z' est pressé alors ça return 122)
+        return ord(msvcrt.getwch())
 
-    def inputs_linux(self):
+
+    def inputs_linux(self): #cette fonction fait pareil que inputs_windows() mais en utilisant curses pour linux
 
         def main(stdscr,self=self):
             while True:
@@ -185,10 +187,10 @@ def lancer_menu_principal(menu=menu,joueur=joueur):
     while True:
         menu_selectionne = menu.lancer_interaction_avec_menu()
         if menu_selectionne == 0:
-            break
+            return (joueur,1)
         if menu_selectionne == 1:
             joueur = menu_touches_clavier()
-            lancer_menu_principal()
+            return (joueur,0)
         if menu_selectionne == 2:
             credits()
             if name == 'nt': msvcrt.getwch()
@@ -196,11 +198,21 @@ def lancer_menu_principal(menu=menu,joueur=joueur):
                 def main(stdscr):
                     stdscr.getch()
                 curses.wrapper(main)
-            lancer_menu_principal()
-    return joueur
+            return (joueur,0)
 
-joueur=lancer_menu_principal()
+def verifier_si_il_faut_lancer_le_jeu(menu=menu,joueur=joueur):
+    sortie = lancer_menu_principal(menu,joueur)
+    if sortie[1]: return sortie[0]
+    while True:
+        sortie = lancer_menu_principal(menu,sortie[0])
+        if sortie[1]: return sortie[0]
 
+joueur=verifier_si_il_faut_lancer_le_jeu()
 
+joueur.afficher()
+
+demmarer_le_jeu()
+
+print(name)
 
  #with open(filename, "r") as f:
