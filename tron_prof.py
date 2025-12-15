@@ -16,9 +16,13 @@ from os import system, path, name # Le system de os est toujours utiliser pour c
 from time import sleep, mktime, localtime, ctime # Time est utiliser pour gerer le temps. ctime for convert sec to date str
 import json # La lib json permet de manager les json 
 if name == "nt": # Si windows
+    is_win = True
     import winsound # Gestion audio
+    import msvcrt # Gestion clavier 
 else: # Si linux
+    is_win = False
     import ossaudiodev #Gestion audio
+    import curses # Gestion Clavier 
 
 COLOR = {
     "black": "\033[30m",
@@ -100,6 +104,8 @@ class Player:
         self.player_name = player_name if player_name else f"Player_{color}" # Si le playername n'est pas spécifier, il en crée un nouveau appeler PLayer_couleur.
         self.score = 0
         self.loser = False
+
+        self.current_direction = (0, -1) if color == "blue" else (0, 1)
     
     def get_pos(self): return self.y * CONFIG_SIZE_X + self.x # Quel lignes on est ? * Le nombre de cell par ligne + Les colones ou on est. voir Board.board
     # pas oublier de fetch
@@ -134,6 +140,9 @@ class Player:
     def move_right(self): return self.move(1, 0)
     def move_up(self):  return self.move(0, -1)
     def move_down(self): return self.move(0, 1)
+    def move_auto(self): return self.move(self.current_direction)
+
+    def update_direction(self, key): self.current_direction = key
 
 class Board:
     def __init__(self, players=None):
@@ -298,6 +307,81 @@ class Board:
                 print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
 
         return None
+
+class Input_gestion(): #creation d'une class inputgestion pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier
+
+    def __init__(self,tab = None): #les controles des joueurs sont stocker dans une matrice tab de 2x4 pour les 2 joueurs et les 4 touches haut bas gauche droite
+        if tab: self.input_table=tab #si tab existe alors self.inputtable prend la valeur de tab
+        else: self.input_table = [[95,95,95,95],[95,95,95,95]] #sinon alors self.inputtable devient une matrice remplie de 95 qui correspond en ascii au '_'
+
+    def afficher(self,idjoueur = 3): #une fonction qui affiche de manière esthetique les inputs des joueur
+        if idjoueur > 2 or idjoueur < 0: #si l'id du joueur dont on veut print les touches est mal précisé alors la fonction print les touches des 2 joueurs
+            print(f"""
+Joueur 1
+UP:{chr(self.input_table[0][0])}
+DOWN:{chr(self.input_table[0][1])}
+LEFT:{chr(self.input_table[0][2])}
+RIGHT:{chr(self.input_table[0][3])}
+
+Joueur 2
+UP:{chr(self.input_table[1][0])}
+DOWN:{chr(self.input_table[1][1])}
+LEFT:{chr(self.input_table[1][2])}
+RIGHT:{chr(self.input_table[1][3])}
+""") #les str de type f permette de placer des variables à l'interieur du str avec { } sans devoir concatener
+
+        else: #si l'id est correctement specifié alors on print le joueur voulue
+            print(f"""
+Joueur {'1' if idjoueur == 0 else '2'}
+UP:{chr(self.input_table[idjoueur][0])}
+DOWN:{chr(self.input_table[idjoueur][1])}
+LEFT:{chr(self.input_table[idjoueur][2])}
+RIGHT:{chr(self.input_table[idjoueur][3])}
+""")
+
+    def identify_player(self, input_user):
+        for i in range(2):
+            if input_user in self.input_table[i]:
+                return i
+        return None
+    
+    def inputs_windows(self): #cette fonction return la touche pressé sous forme decimal en ascii(ex: si 'z' est pressé alors ça return 122)
+        return ord(msvcrt.getwch())
+
+
+    def inputs_linux(self): #cette fonction fait pareil que inputs_windows() mais en utilisant curses pour linux
+        def main(stdscr):
+            return stdscr.getch() # 
+        return curses.wrapper(main) # 
+
+    def input_common(self):
+        if is_win: input_user = self.inputs_windows()
+        else: input_user = self.inputs_linux()
+
+        player_id = self.identify_player(input_user)
+        return (self.input_table[player_id].index(input_user), player_id)
+
+    def initbindingwin(self):
+        for idjoueur in range(2):
+            for inp in range(4):
+                system("clear")
+                self.afficher(idjoueur)
+                self.input_table[idjoueur][inp]=ord(msvcrt.getwch())
+            self.afficher(idjoueur)
+        return self
+
+    def initbindinglinux(self):
+        def main(stdscr):
+            for idjoueur in range(2):
+                for inp in range(4):
+                    system("clear")
+                    self.afficher(idjoueur)
+                    self.input_table[idjoueur][inp]=stdscr.getch()
+                self.afficher(idjoueur)
+            return self
+
+        if __name__ == '__main__':
+            return curses.wrapper(main)     
 
 def demo():
     def test():
