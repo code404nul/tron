@@ -61,13 +61,9 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
 
 
     def inputs_linux(self): #cette fonction fait pareil que inputs_windows() mais en utilisant curses pour linux
-
-        def main(stdscr,self=self):
-            while True:
-                pinput = stdscr.getch() # Pourquoi clear? si on l'uilise dans le jeu tout ca se supprimer?
-                print(pinput)
-
-        return curses.wrapper(main) # ? Il faut les retourner un jour...
+        def main(stdscr):
+            return stdscr.getch() # 
+        return curses.wrapper(main) # 
 
     def initbindingwin(self):
         for idjoueur in range(2):
@@ -216,3 +212,4 @@ demmarer_le_jeu()
 print(name)
 
  #with open(filename, "r") as f:
+
