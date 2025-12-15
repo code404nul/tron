@@ -53,3 +53,14 @@ Creation de tron_prof.py le fichier reelement rendu, un peu de nétoyage, un peu
 Bryan refonte des input et du menu (presque total)
 
 Ps: jhon.json est un tres tres mauv ais model presque pas entrainer, il a besoin de plus de temps pour faire ces preuves
+
+11/12/25 : 
+
+Analyse de code ajout commentaire, rapport, et analyse pour jules
+Bryan correction d'erreur input et de menu
+
+12/12/25:
+
+Jules madale
+Bryan fix pb reccurcivité menu ajout de commentaire UwU
+
