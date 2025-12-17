@@ -21,7 +21,7 @@ if name == "nt": # Si windows
     import msvcrt # Gestion clavier 
 else: # Si linux
     is_win = False
-    import ossaudiodev #Gestion audio
+    #import ossaudiodev #Gestion audio
     import curses # Gestion Clavier 
 
 COLOR = {
