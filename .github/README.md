@@ -64,3 +64,7 @@ Bryan correction d'erreur input et de menu
 Jules madale
 Bryan fix pb reccurcivité menu ajout de commentaire UwU
 
+18/12/25
+
+Jules Final du tron_prof, presque tout fini
+Bryan gestion de la musique et du menu on va dire que le menu et fini
