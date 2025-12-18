@@ -14,23 +14,24 @@ TODO direction self colistion
 
 from os import system, path, name, getcwd # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
 from os.path import dirname, abspath, join
-from time import sleep, mktime, localtime, ctime # Time est utiliser pour gerer le temps. ctime for convert sec to date str
+from time import sleep, mktime, localtime, ctime, time # Time est utiliser pour gerer le temps. ctime for convert sec to date str
 import json # La lib json permet de manager les json
 if name == "nt": # Si windows
     is_win = True
     import winsound # Gestion audio
     import msvcrt # Gestion clavier
+"""
 else: # Si linux
     is_win = False
     #import ossaudiodev #Gestion audio
-<<<<<<< HEAD
     import curses # Gestion Clavier
+"""
 
 import threading
 import queue
-=======
-    import curses # Gestion Clavier 
->>>>>>> 8ac7afea90aa3888ac50e433c82508d63f853360
+
+
+clear= lambda: system('cls' if name == 'nt' else 'clear') #pour éviter d'écrire system('cls') à chaque fois, on va écrire clear()
 
 COLOR = {
     "black": "\033[30m",
@@ -241,7 +242,7 @@ class Board:
         Return None
         """
         sleep(1)
-        system("clear")
+        clear()
 
         print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}") # affiche l'ecran de game over
         sleep(1)
@@ -270,7 +271,7 @@ class Board:
 
         self.save_manager.save(game_data)
         sleep(9)
-        quit() # TODO on devrait revenir sur le menu
+        quit()
 
     def add_player(self, player):
         """
@@ -295,7 +296,7 @@ class Board:
 
         Return none
         """
-        system("clear")
+        clear()
 
         if self._check_collision():
             print("exec game over")
@@ -372,7 +373,7 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
     def initbindingwin(self):
         for idjoueur in range(2):
             for inp in range(4):
-                system("clear")
+                clear()
                 self.afficher(idjoueur)
                 self.input_table[idjoueur][inp]=ord(msvcrt.getwch())
             self.afficher(idjoueur)
@@ -382,7 +383,7 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
         def main(stdscr):
             for idjoueur in range(2):
                 for inp in range(4):
-                    system("clear")
+                    clear()
                     self.afficher(idjoueur)
                     self.input_table[idjoueur][inp]=stdscr.getch()
                 self.afficher(idjoueur)
@@ -392,16 +393,15 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
             return curses.wrapper(main)
 
     def input_common(self, callback_queue):
-        if is_win: 
+        if is_win:
             input_user = self.inputs_windows()
-        else: 
+        else:
             input_user = self.inputs_linux()
-        
+
         player_id = self.identify_player(input_user)
-        
+
         if player_id is not None:
             result = (self.input_table[player_id].index(input_user), player_id)
-            print(result)
             callback_queue.put(result)
             return result
         return None
@@ -429,40 +429,235 @@ def demo():
         sleep(0.5)
         test1()
 
-if __name__=="__main__":
-    player_blue = Player("O", "blue", CONFIG_SIZE_X // 2, 1)
-    player_orange = Player("O", "orange", CONFIG_SIZE_X // 2, CONFIG_SIZE_Y - 2)
+
+def start_game_2v2(input_manager):
+    player_blue = Player("O", "blue", CONFIG_SIZE_X // 2, 1)  # haut au centre
+    player_orange = Player("O", "orange", CONFIG_SIZE_X // 2, CONFIG_SIZE_Y - 2)  # bas au centre
+
     board_instance = Board()
+
     board_instance.add_player(player_blue)
     board_instance.add_player(player_orange)
-    callback_queue = queue.Queue()
-    input_manager = InputGestion()
-    
-    
+
+    callback_queue = queue.Queue() # Queue pour faire la parlote entre le thread input et le thread principal
+
+    # mapping des directions
+    DIRECTION_MAP = {
+        0: (0, -1),  # Haut
+        1: (0, 1),   # Bas
+        2: (-1, 0),  # Gauche
+        3: (1, 0)    # Droite
+    }
     board_instance.show_stadium()
-    
+
+    last_move_time = 0
+
+    # Thread d'input qui tourne en permanence en arrière-plan
+    def input_listener():
+        """Thread qui écoute en continu les inputs clavier et les met dans la queue"""
+        while True:
+            input_manager.input_common(callback_queue)
+
+    # Démarrer le thread d'écoute des inputs
+    input_thread = threading.Thread(target=input_listener)
+    input_thread.daemon = True  # Thread daemon : s'arrête automatiquement quand le programme principal se termine
+    input_thread.start()
+
+    # Boucle principale du jeu
     while True:
-        # Créer un nouveau thread à chaque itération
-        input_thread = threading.Thread(target=input_manager.input_common, args=(callback_queue,))
-        input_thread.daemon = True  # Thread daemon pour qu'il s'arrête avec le programme
-        input_thread.start()
-        
-        try:
-            # Attendre un input avec timeout pour ne pas bloquer indéfiniment
-            callback_message = callback_queue.get(timeout=0.1)
-            
-            direction, player_id = callback_message
-            
-            # Déplacer le joueur correspondant
-            if player_id == 0:  # Joueur 1 (bleu)
-                player_blue.move(direction)
-            elif player_id == 1:  # Joueur 2 (orange)
-                player_orange.move(direction)
-            
+
+        # traiter les inputs dispo
+        while not callback_queue.empty():
+            try:
+                # Recupere un msg sans attendre
+                callback_message = callback_queue.get_nowait()
+
+                direction, player_id = callback_message
+                dx, dy = DIRECTION_MAP[direction]
+
+                if player_id == 0:
+                    player_blue.current_direction = (dx, dy)
+                elif player_id == 1:
+                    player_orange.current_direction = (dx, dy)
+
+            except queue.Empty: # PLus d'input
+                break
+
+        current_time = time()
+        if current_time - last_move_time >= 0.5: # Tout les 0.5 un peu pres refaire une image
+
+            dx_blue, dy_blue = player_blue.current_direction
+            player_blue.move(dx_blue, dy_blue)
+
+            dx_orange, dy_orange = player_orange.current_direction
+            player_orange.move(dx_orange, dy_orange)
+
             board_instance.show_stadium()
-            
-        except queue.Empty:
-            # Pas d'input reçu, continuer
-            pass
-        
-        sleep(0.05)  # Petite pause pour ne pas surcharger le CPU
+
+            last_move_time = current_time
+
+        # Petit pause pour sont petit coeur
+        sleep(0.01)
+
+
+
+asciiart = [r"""
+ ███████████
+▒█▒▒▒███▒▒▒█
+▒   ▒███  ▒  ████████   ██████  ████████
+    ▒███    ▒▒███▒▒███ ███▒▒███▒▒███▒▒███
+    ▒███     ▒███ ▒▒▒ ▒███ ▒███ ▒███ ▒███
+    ▒███     ▒███     ▒███ ▒███ ▒███ ▒███
+    █████    █████    ▒▒██████  ████ █████
+   ▒▒▒▒▒    ▒▒▒▒▒      ▒▒▒▒▒▒  ▒▒▒▒ ▒▒▒▒▒ """, r"""
+- Input management, music, menu : Renderaction
+- AI system, threading, animation, game system : @archibarbu
+
+This game is under MIT license.
+Feel free to contact : perso[aroba]archibarbu[dot]art
+Don't hesitate to commit !
+Thanks everyone.
+
+          ,'""`.
+         / _  _ \
+         |(@)(@)|
+         )  __  (
+        /,'))((`.\
+       (( ((  )) ))      hh
+        `\ `)(' /'
+"""]
+
+def score():
+    print("Fonctionnalité Score à venir...")
+    sleep(2)
+
+def demmarer_le_jeu(joueur):
+    start_game_2v2(joueur)
+
+def menu_touches_clavier():
+    """configutation des touches"""
+    clear()
+
+    joueur_temp = InputGestion()
+
+    if name == 'nt':
+        for idjoueur in range(2):
+            for inp in range(4):
+                clear()
+                print("=== Config des touches ===\n")
+                direction = ["HAUT", "BAS", "GAUCHE", "DROITE"][inp]
+                print(f"Joueur {idjoueur + 1} - Appuyez sur la touche pour {direction}")
+                joueur_temp.input_table[idjoueur][inp] = ord(msvcrt.getwch())
+    else:
+        pass # Linux on verra
+    return joueur_temp
+
+def credits():
+    clear()
+    print(asciiart[1])
+    if name == 'nt':
+        msvcrt.getwch()
+    else:
+        def main(stdscr):
+            stdscr.getch()
+        curses.wrapper(main)
+
+
+disposition = input("""
+1. AZERTY?
+2. QWERTY?
+""")
+
+if int(disposition) == 1:
+    disposition_du_clavier = [122, 115, 113, 100]  # z, s, q, d
+else:
+    disposition_du_clavier = [119, 115, 97, 100]   # w, s, a, d
+
+joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])  # i, k, j, l
+
+input_pour_le_menu = disposition_du_clavier
+
+class Menu:
+    def __init__(self, tron_ascii=asciiart[0]):
+        self.main_interface = tron_ascii
+        self.liste_des_selections = [
+            "Démarrer le jeu",
+            "Touches Clavier",
+            "Credits",
+            "Score"
+        ]
+
+    def refresh_menu(self, placement=0):
+        """affiche le menu avec la selection actuelle"""
+        clear()
+        print(self.main_interface)
+        for i in range(len(self.liste_des_selections)):
+            print(f"-[{'*' if placement == i else ' '}] {self.liste_des_selections[i]}")
+
+    def lancer_interaction_avec_menu(self, placement=0):
+        """
+        Gere la navigation dans le menu
+        reuturn : l'optiuon selectionné
+        """
+        if name == 'nt':  # Windows
+            while True:
+                pinput = ord(msvcrt.getwch())
+
+                # valider
+                if pinput == input_pour_le_menu[3]:  # Droite
+                    return placement
+
+                # aller en HAUT
+                elif pinput == input_pour_le_menu[0]:
+                    placement = (placement - 1) % len(self.liste_des_selections)
+
+                # aller en BAS
+                elif pinput == input_pour_le_menu[1]:
+                    placement = (placement + 1) % len(self.liste_des_selections)
+
+                self.refresh_menu(placement)
+
+        else:  # Linux, dans la grande logique
+            pass # on verra, on verra
+
+def lancer_menu_principal(menu, joueur):
+    """
+    Affique le menu et execute ce qu'il faut, il peut retourner (true, joueur) si il a fini c'est qu'il faut lancer le jeu
+    """
+    placement = 0
+
+    while True:
+        menu.refresh_menu(placement)
+        menu_selectionne = menu.lancer_interaction_avec_menu(placement)
+
+        if menu_selectionne == 0:
+            demmarer_le_jeu(joueur)
+
+        elif menu_selectionne == 1:
+            joueur = menu_touches_clavier()
+
+            global input_pour_le_menu # pb pb pb
+            input_pour_le_menu = joueur.input_table[0]
+            placement = menu_selectionne
+
+        elif menu_selectionne == 2:
+            credits()
+            placement = menu_selectionne
+
+        elif menu_selectionne == 3:
+            score()
+            placement = menu_selectionne
+
+def main():
+    menu = Menu()
+    should_start, joueur = lancer_menu_principal(menu, joueur)
+
+
+is_on_edupython = False
+try:
+    import lycee
+    is_on_edupython = True
+except: is_on_edupython = False
+
+if is_on_edupython:
+    system(f"start powershell.exe {join(dirname(abspath(__file__)), 'tron_prof'.py)}")
