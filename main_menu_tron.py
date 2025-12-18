@@ -61,9 +61,13 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
 
 
     def inputs_linux(self): #cette fonction fait pareil que inputs_windows() mais en utilisant curses pour linux
-        def main(stdscr):
-            return stdscr.getch() # 
-        return curses.wrapper(main) # 
+
+        def main(stdscr,self=self):
+            while True:
+                pinput = stdscr.getch() # Pourquoi clear? si on l'uilise dans le jeu tout ca se supprimer?
+                print(pinput)
+
+        return curses.wrapper(main) # ? Il faut les retourner un jour...
 
     def initbindingwin(self):
         for idjoueur in range(2):
@@ -124,7 +128,7 @@ Thanks everyone.
         `\ `)(' /'
 """]
 
-def score(): pass
+def score(): print(574657486464)
 
 def demmarer_le_jeu(): pass
 
@@ -139,6 +143,11 @@ def menu_touches_clavier():
 def credits():
     clear()
     print(asciiart[1])
+    if name == 'nt': msvcrt.getwch()
+    else:
+        def main(stdscr):
+            stdscr.getch()
+        curses.wrapper(main)
 
 class Menu:
 
@@ -153,14 +162,15 @@ class Menu:
             print(f"-[{'*' if placement == i else ' '}] {self.liste_des_selections[i]}")
 
 
-    def lancer_interaction_avec_menu(self):
-        placement = 0
+    def lancer_interaction_avec_menu(self,placement=0):
         if name == 'nt':
             while True:
                 pinput = ord(msvcrt.getwch())
                 if pinput == input_pour_le_menu[3]: break
                 elif pinput == input_pour_le_menu[0] and placement != 0: placement += -1
                 elif pinput == input_pour_le_menu[1] and placement < len(self.liste_des_selections)-1: placement += 1
+                elif pinput == input_pour_le_menu[0] and not(placement != 0): placement = len(self.liste_des_selections)-1
+                elif pinput == input_pour_le_menu[1] and not(placement < len(self.liste_des_selections)-1): placement = 0
                 self.refresh_menu(placement)
             return placement
         else:
@@ -178,29 +188,27 @@ class Menu:
 
 
 menu=Menu()
-def lancer_menu_principal(menu=menu,joueur=joueur):
-    menu.refresh_menu()
+def lancer_menu_principal(menu=menu,joueur=joueur,menu_selectionne=0):
+    menu.refresh_menu(menu_selectionne)
     while True:
-        menu_selectionne = menu.lancer_interaction_avec_menu()
+        menu_selectionne = menu.lancer_interaction_avec_menu(menu_selectionne)
         if menu_selectionne == 0:
-            return (joueur,1)
+            return (joueur,1,menu_selectionne)
         if menu_selectionne == 1:
             joueur = menu_touches_clavier()
-            return (joueur,0)
+            return (joueur,0,menu_selectionne)
         if menu_selectionne == 2:
             credits()
-            if name == 'nt': msvcrt.getwch()
-            else:
-                def main(stdscr):
-                    stdscr.getch()
-                curses.wrapper(main)
-            return (joueur,0)
+            return (joueur,0,menu_selectionne)
+        if menu_selectionne == 3:
+            score()
+            return (joueur,0,menu_selectionne)
 
 def verifier_si_il_faut_lancer_le_jeu(menu=menu,joueur=joueur):
     sortie = lancer_menu_principal(menu,joueur)
     if sortie[1]: return sortie[0]
     while True:
-        sortie = lancer_menu_principal(menu,sortie[0])
+        sortie = lancer_menu_principal(menu,sortie[0],sortie[2])
         if sortie[1]: return sortie[0]
 
 joueur=verifier_si_il_faut_lancer_le_jeu()
@@ -212,4 +220,3 @@ demmarer_le_jeu()
 print(name)
 
  #with open(filename, "r") as f:
-

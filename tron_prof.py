@@ -23,10 +23,14 @@ if name == "nt": # Si windows
 else: # Si linux
     is_win = False
     #import ossaudiodev #Gestion audio
+<<<<<<< HEAD
     import curses # Gestion Clavier
 
 import threading
 import queue
+=======
+    import curses # Gestion Clavier 
+>>>>>>> 8ac7afea90aa3888ac50e433c82508d63f853360
 
 COLOR = {
     "black": "\033[30m",
