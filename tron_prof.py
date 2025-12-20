@@ -12,6 +12,30 @@ Z/Q/S/D et les fleches pour le deuxième joueurs
 TODO direction self colistion
 """
 
+
+"""
+(on aurait pu utiliser des arguments mais c'est pas rigolo, surtout si on le lance de base sur powershell)
+C'EST QUOI is_atty ?
+
+Avec bryan on s'est posé la question, qu'es qui fait edupython quelque chose de detectable ?
+On aurait pu se diriger vers sont interpretateur mais qu'es qui nous dit que vous avez aucun autre interpretateur que edupython ?
+Les libs comme lycée serait aussi disponible, il nous faut donc un particularité qui rend spécial notre edupython préféré
+un truc, ce petit truc qui le rend different ^^
+
+Donc on s'est penché vers l'affichage, pourquoi edupython affiche pas les couleurs ?
+Pourquoi il fait une fenetre tkinter pour les inputs ?
+
+PARCE QUE SONT AFFICHAGE ET ETRANGE, et quand on a un affichage étrange !
+On s'est donc penché sur les sys.stdout et sys.stdin car elle permettrait d'apres mon cours sur france IOI d'afficher les charactere, recupere les input plus vite
+(Et on devait de base utilser se calvere pour l'affichage avec les inputs linux)
+
+Donc petit passage sur la doc officiel et dit sys.stderr qui nous parle un peu d'erreur
+OOOh tiens :
+
+On Windows, UTF-8 is used for the console device. Non-character devices such as disk files and pipes use the system locale encoding (i.e. the ANSI codepage). Non-console character devices such as NUL (i.e. where isatty() returns True) use the value of the console input and output codepages at startup, respectively for stdin and stdout/stderr.
+Les saintes paroles sont longues mais disponible ici: https://docs.python.org/3/library/sys.html
+"""
+
 from os import system, path, name, getcwd # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
 from os.path import dirname, abspath, join
 from time import sleep, mktime, localtime, ctime, time # Time est utiliser pour gerer le temps. ctime for convert sec to date str
@@ -27,6 +51,8 @@ else: # Si linux
     import curses # Gestion Clavier
 """
 
+
+import sys # Pour sys.executable qui donne quel interpreteur python va s'occuper de notre bad boy ^^ et aussi de notre is_atty ?
 import threading
 import queue
 
@@ -407,29 +433,6 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
         return None
 
 
-def callback_input(msg): print(msg)
-
-
-def demo():
-    def test():
-        player_blue.move_down()
-        player_orange.move_up()
-        board_instance.show_stadium()
-
-    def test1():
-        player_orange.move_up()
-        player_blue.move_down()
-        board_instance.show_stadium()
-
-    for i in range(9):
-        sleep(0.5)
-        test()
-
-    for i in range(6):
-        sleep(0.5)
-        test1()
-
-
 def start_game_2v2(input_manager):
     player_blue = Player("O", "blue", CONFIG_SIZE_X // 2, 1)  # haut au centre
     player_orange = Player("O", "orange", CONFIG_SIZE_X // 2, CONFIG_SIZE_Y - 2)  # bas au centre
@@ -531,8 +534,6 @@ def score():
     print("Fonctionnalité Score à venir...")
     sleep(2)
 
-def demmarer_le_jeu(joueur):
-    start_game_2v2(joueur)
 
 def menu_touches_clavier():
     """configutation des touches"""
@@ -562,21 +563,6 @@ def credits():
             stdscr.getch()
         curses.wrapper(main)
 
-
-disposition = input("""
-1. AZERTY?
-2. QWERTY?
-""")
-
-if int(disposition) == 1:
-    disposition_du_clavier = [122, 115, 113, 100]  # z, s, q, d
-else:
-    disposition_du_clavier = [119, 115, 97, 100]   # w, s, a, d
-
-joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])  # i, k, j, l
-
-input_pour_le_menu = disposition_du_clavier
-
 class Menu:
     def __init__(self, tron_ascii=asciiart[0]):
         self.main_interface = tron_ascii
@@ -596,7 +582,7 @@ class Menu:
 
     def lancer_interaction_avec_menu(self, placement=0):
         """
-        Gere la navigation dans le menu
+        gere tout ce qui est navigation dans le menu
         reuturn : l'optiuon selectionné
         """
         if name == 'nt':  # Windows
@@ -631,7 +617,7 @@ def lancer_menu_principal(menu, joueur):
         menu_selectionne = menu.lancer_interaction_avec_menu(placement)
 
         if menu_selectionne == 0:
-            demmarer_le_jeu(joueur)
+            start_game_2v2(joueur)
 
         elif menu_selectionne == 1:
             joueur = menu_touches_clavier()
@@ -649,15 +635,24 @@ def lancer_menu_principal(menu, joueur):
             placement = menu_selectionne
 
 def main():
+
+    global input_pour_le_menu # pb, pb, pb
+    disposition = input("""
+    1. AZERTY?
+    2. QWERTY?
+    """)
+
+    if int(disposition) == 1:
+        disposition_du_clavier = [122, 115, 113, 100]  # z, s, q, d
+    else:
+        disposition_du_clavier = [119, 115, 97, 100]   # w, s, a, d
+
+    joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])  # i, k, j, l
+
+    input_pour_le_menu = disposition_du_clavier
     menu = Menu()
-    should_start, joueur = lancer_menu_principal(menu, joueur)
+    lancer_menu_principal(menu, joueur)
 
-
-is_on_edupython = False
-try:
-    import lycee
-    is_on_edupython = True
-except: is_on_edupython = False
-
-if is_on_edupython:
-    system(f"start powershell.exe {join(dirname(abspath(__file__)), 'tron_prof'.py)}")
+if not sys.stderr.isatty():
+    system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
+else: main()
