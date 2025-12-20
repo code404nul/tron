@@ -655,4 +655,5 @@ def main():
 
 if not sys.stderr.isatty():
     system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
+    winsound.PlaySound('tronost.wav', winsound.SND_FILENAME | winsound.SND_LOOP)
 else: main()
