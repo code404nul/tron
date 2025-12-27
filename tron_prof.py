@@ -296,7 +296,8 @@ class Board:
                 }
 
         self.save_manager.save(game_data)
-        sleep(9)
+        sleep(4)
+        system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
         quit()
 
     def add_player(self, player):
@@ -428,7 +429,7 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
 
         if player_id is not None:
             result = (self.input_table[player_id].index(input_user), player_id)
-            callback_queue.put(result)
+            callback_queue.put(result) # Va mettre le resultat dans la queux a vote start_game_2v2
             return result
         return None
 
@@ -442,7 +443,7 @@ def start_game_2v2(input_manager):
     board_instance.add_player(player_blue)
     board_instance.add_player(player_orange)
 
-    callback_queue = queue.Queue() # Queue pour faire la parlote entre le thread input et le thread principal
+    callback_queue = queue.Queue() # Queue pour gerer la queue d'input
 
     # mapping des directions
     DIRECTION_MAP = {
@@ -461,16 +462,12 @@ def start_game_2v2(input_manager):
         while True:
             input_manager.input_common(callback_queue)
 
-    # Démarrer le thread d'écoute des inputs
-    input_thread = threading.Thread(target=input_listener)
-    input_thread.daemon = True  # Thread daemon : s'arrête automatiquement quand le programme principal se termine
+    input_thread = threading.Thread(target=input_listener) # démarrer le thread d'écoute des inputs
     input_thread.start()
 
-    # Boucle principale du jeu
     while True:
 
-        # traiter les inputs dispo
-        while not callback_queue.empty():
+        while not callback_queue.empty(): # traiter les inputs dispo
             try:
                 # Recupere un msg sans attendre
                 callback_message = callback_queue.get_nowait()
@@ -487,7 +484,7 @@ def start_game_2v2(input_manager):
                 break
 
         current_time = time()
-        if current_time - last_move_time >= 0.5: # Tout les 0.5 un peu pres refaire une image
+        if current_time - last_move_time >= 0.5: # Tout les 0.5 un peu pres refaire une image donc 2 fps
 
             dx_blue, dy_blue = player_blue.current_direction
             player_blue.move(dx_blue, dy_blue)
@@ -535,33 +532,93 @@ def score():
     sleep(2)
 
 
-def menu_touches_clavier():
-    """configutation des touches"""
-    clear()
+class GameManager:
+    def __init__(self):
+        self.input_config = SaveManager("config.json")
+        self.input_pour_le_menu = None
+        self.joueur = None
+        self._initialize_input()
 
-    joueur_temp = InputGestion()
+    def _initialize_input(self):
+        """Initialise la configuration des inputs"""
+        try:
+            layout = self.input_config.load()["layout"]
+            self.joueur = InputGestion(layout)
+            self.input_pour_le_menu = layout[0]
+        except:
+            disposition = input("""
+        1. AZERTY?
+        2. QWERTY?
+        """)
 
-    if name == 'nt':
-        for idjoueur in range(2):
-            for inp in range(4):
-                clear()
-                print("=== Config des touches ===\n")
-                direction = ["HAUT", "BAS", "GAUCHE", "DROITE"][inp]
-                print(f"Joueur {idjoueur + 1} - Appuyez sur la touche pour {direction}")
-                joueur_temp.input_table[idjoueur][inp] = ord(msvcrt.getwch())
-    else:
-        pass # Linux on verra
-    return joueur_temp
+            if int(disposition) == 1:
+                disposition_du_clavier = [122, 115, 113, 100]  # z, s, q, d
+            else:
+                disposition_du_clavier = [119, 115, 97, 100]   # w, s, a, d
+            self.joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])  # i, k, j, l
+            self.input_pour_le_menu = disposition_du_clavier
 
-def credits():
-    clear()
-    print(asciiart[1])
-    if name == 'nt':
-        msvcrt.getwch()
-    else:
-        def main(stdscr):
-            stdscr.getch()
-        curses.wrapper(main)
+    def menu_touches_clavier(self):
+        """configutation des touches"""
+        clear()
+
+        joueur_temp = InputGestion()
+
+        if name == 'nt':
+            for idjoueur in range(2):
+                for inp in range(4):
+                    clear()
+                    print("=== Config des touches ===\n")
+                    direction = ["HAUT", "BAS", "GAUCHE", "DROITE"][inp]
+                    print(f"Joueur {idjoueur + 1} - Appuyez sur la touche pour {direction}")
+                    joueur_temp.input_table[idjoueur][inp] = ord(msvcrt.getwch())
+        else:
+            pass # Linux on verra
+        self.input_config.save({"layout": joueur_temp.input_table})
+
+        return joueur_temp
+
+    def credits(self):
+        clear()
+        print(asciiart[1])
+        if name == 'nt':
+            msvcrt.getwch()
+        else:
+            def main(stdscr):
+                stdscr.getch()
+            curses.wrapper(main)
+
+    def lancer_menu_principal(self, menu):
+        """
+        Affique le menu et execute ce qu'il faut, il peut retourner (true, joueur) si il a fini c'est qu'il faut lancer le jeu
+        """
+        placement = 0
+
+        while True:
+            menu.refresh_menu(placement)
+            menu_selectionne = menu.lancer_interaction_avec_menu(placement, self.input_pour_le_menu)
+
+            if menu_selectionne == 0:
+                start_game_2v2(self.joueur)
+
+            elif menu_selectionne == 1:
+                self.joueur = self.menu_touches_clavier()
+                self.input_pour_le_menu = self.joueur.input_table[0]
+                placement = menu_selectionne
+
+            elif menu_selectionne == 2:
+                self.credits()
+                placement = menu_selectionne
+
+            elif menu_selectionne == 3:
+                score()
+                placement = menu_selectionne
+
+    def run(self):
+        """Lance le jeu"""
+        menu = Menu()
+        self.lancer_menu_principal(menu)
+
 
 class Menu:
     def __init__(self, tron_ascii=asciiart[0]):
@@ -570,7 +627,8 @@ class Menu:
             "Démarrer le jeu",
             "Touches Clavier",
             "Credits",
-            "Score"
+            "Score",
+            "Pensez a remap les touches !"
         ]
 
     def refresh_menu(self, placement=0):
@@ -580,7 +638,7 @@ class Menu:
         for i in range(len(self.liste_des_selections)):
             print(f"-[{'*' if placement == i else ' '}] {self.liste_des_selections[i]}")
 
-    def lancer_interaction_avec_menu(self, placement=0):
+    def lancer_interaction_avec_menu(self, placement=0, input_pour_le_menu=None):
         """
         gere tout ce qui est navigation dans le menu
         reuturn : l'optiuon selectionné
@@ -606,54 +664,17 @@ class Menu:
         else:  # Linux, dans la grande logique
             pass # on verra, on verra
 
-def lancer_menu_principal(menu, joueur):
-    """
-    Affique le menu et execute ce qu'il faut, il peut retourner (true, joueur) si il a fini c'est qu'il faut lancer le jeu
-    """
-    placement = 0
-
-    while True:
-        menu.refresh_menu(placement)
-        menu_selectionne = menu.lancer_interaction_avec_menu(placement)
-
-        if menu_selectionne == 0:
-            start_game_2v2(joueur)
-
-        elif menu_selectionne == 1:
-            joueur = menu_touches_clavier()
-
-            global input_pour_le_menu # pb pb pb
-            input_pour_le_menu = joueur.input_table[0]
-            placement = menu_selectionne
-
-        elif menu_selectionne == 2:
-            credits()
-            placement = menu_selectionne
-
-        elif menu_selectionne == 3:
-            score()
-            placement = menu_selectionne
 
 def main():
+    game_manager = GameManager()
+    game_manager.run()
 
-    global input_pour_le_menu # pb, pb, pb
-    disposition = input("""
-    1. AZERTY?
-    2. QWERTY?
-    """)
-
-    if int(disposition) == 1:
-        disposition_du_clavier = [122, 115, 113, 100]  # z, s, q, d
-    else:
-        disposition_du_clavier = [119, 115, 97, 100]   # w, s, a, d
-
-    joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])  # i, k, j, l
-
-    input_pour_le_menu = disposition_du_clavier
-    menu = Menu()
-    lancer_menu_principal(menu, joueur)
 
 if not sys.stderr.isatty():
     system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
     winsound.PlaySound('tronost.wav', winsound.SND_FILENAME | winsound.SND_LOOP)
-else: main()
+else:
+    main()
+
+
+# TODO FIX save config input
