@@ -119,6 +119,9 @@ class SaveManager:
             print(f"Aie Aie Aie, une erreur...: {e}")
             return False
 
+    def raw_save(self, key, value):
+        with open(self.filename, "w") as f: json.dump({key: value}, f, indent=4)
+
     def load(self): return self.json_data # Je recupere le contenu du json
 
 class Player:
@@ -542,7 +545,15 @@ class GameManager:
     def _initialize_input(self):
         """Initialise la configuration des inputs"""
         try:
-            layout = self.input_config.load()["layout"]
+            # Accéder directement à json_data au lieu d'utiliser load()
+            config_data = self.input_config.json_data
+
+            # Prendre la première config si c'est une liste
+            if isinstance(config_data, list) and len(config_data) > 0:
+                layout = config_data[0]["layout"]
+            else:
+                layout = config_data["layout"]
+
             self.joueur = InputGestion(layout)
             self.input_pour_le_menu = layout[0]
         except:
@@ -550,12 +561,11 @@ class GameManager:
         1. AZERTY?
         2. QWERTY?
         """)
-
             if int(disposition) == 1:
                 disposition_du_clavier = [122, 115, 113, 100]  # z, s, q, d
             else:
                 disposition_du_clavier = [119, 115, 97, 100]   # w, s, a, d
-            self.joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])  # i, k, j, l
+            self.joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])
             self.input_pour_le_menu = disposition_du_clavier
 
     def menu_touches_clavier(self):
@@ -574,7 +584,8 @@ class GameManager:
                     joueur_temp.input_table[idjoueur][inp] = ord(msvcrt.getwch())
         else:
             pass # Linux on verra
-        self.input_config.save({"layout": joueur_temp.input_table})
+        self.input_config.raw_save("layout", joueur_temp.input_table)
+
 
         return joueur_temp
 
@@ -627,8 +638,7 @@ class Menu:
             "Démarrer le jeu",
             "Touches Clavier",
             "Credits",
-            "Score",
-            "Pensez a remap les touches !"
+            "Score"
         ]
 
     def refresh_menu(self, placement=0):
@@ -675,6 +685,3 @@ if not sys.stderr.isatty():
     winsound.PlaySound('tronost.wav', winsound.SND_FILENAME | winsound.SND_LOOP)
 else:
     main()
-
-
-# TODO FIX save config input
