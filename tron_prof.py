@@ -36,9 +36,11 @@ On Windows, UTF-8 is used for the console device. Non-character devices such as 
 Les saintes paroles sont longues mais disponible ici: https://docs.python.org/3/library/sys.html
 """
 
+import curses
+from random import sample
 from os import system, path, name, getcwd # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
 from os.path import dirname, abspath, join
-from time import sleep, mktime, localtime, ctime, time # Time est utiliser pour gerer le temps. ctime for convert sec to date str
+from time import sleep, mktime, localtime, time # Time est utiliser pour gerer le temps. ctime for convert sec to date str
 import json # La lib json permet de manager les json
 if name == "nt": # Si windows
     is_win = True
@@ -70,11 +72,45 @@ COLOR = {
     "reset": "\033[0m"
 } # Toutes ces valeurs permette de d'afficher des color dans le terminal, je ne l'ai ai pas trouver au hasard, j'ai trouver ca sur internet.
 
-
-CONFIG_SIZE_Y: int = 27 - 5 # Utiliser pour les border gauche et droit en gros le nombre de character sur la vertical (colone)
+CONFIG_SIZE_Y: int = 23  # Utiliser pour les border gauche et droit en gros le nombre de character sur la vertical (colone) Le nombre 23 a été défini parce qu'il est permet d'avoir une grande grille tout en restant raisonable pour etre poser pas trop de problème avec les consoles
 CONFIG_FACTOR: int = 2 # Le facteur d'agrandissement pour le border Gauche et droit
 CONFIG_SIZE_X: int = CONFIG_SIZE_Y * CONFIG_FACTOR # C'est utilse pour le border haut et bas, car la longeur de chaque cell de charactère et plus petite que la haute des caractere en gros le nombre de character sur l'horizontal (lignes)
 
+ASCIIART = [r"""
+ ███████████
+▒█▒▒▒███▒▒▒█
+▒   ▒███  ▒  ████████   ██████  ████████
+    ▒███    ▒▒███▒▒███ ███▒▒███▒▒███▒▒███
+    ▒███     ▒███ ▒▒▒ ▒███ ▒███ ▒███ ▒███
+    ▒███     ▒███     ▒███ ▒███ ▒███ ▒███
+    █████    █████    ▒▒██████  ████ █████
+   ▒▒▒▒▒    ▒▒▒▒▒      ▒▒▒▒▒▒  ▒▒▒▒ ▒▒▒▒▒ """, r"""
+- Input management, music, menu : Renderaction
+- AI system, threading, animation, game system : @archibarbu
+
+This game is under MIT license.
+Feel free to contact : perso[aroba]archibarbu[dot]art
+Don't hesitate to commit !
+Thanks everyone.
+
+          ,'""`.
+         / _  _ \
+         |(@)(@)|
+         )  __  (
+        /,'))((`.\
+       (( ((  )) ))      hh
+        `\ `)(' /'
+""", r"""
+  ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███
+ ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒
+▒██░▄▄▄░▒██  ▀█▄  ▓██    ▓██░▒███      ▒██░  ██▒ ▓██  █▒░▒███   ▓██ ░▄█ ▒
+░▓█  ██▓░██▄▄▄▄██ ▒██    ▒██ ▒▓█  ▄    ▒██   ██░  ▒██ █░░▒▓█  ▄ ▒██▀▀█▄
+░▒▓███▀▒ ▓█   ▓██▒▒██▒   ░██▒░▒████▒   ░ ████▓▒░   ▒▀█░  ░▒████▒░██▓ ▒██▒
+ ░▒   ▒  ▒▒   ▓▒█░░ ▒░   ░  ░░░ ▒░ ░   ░ ▒░▒░▒░    ░ ▐░  ░░ ▒░ ░░ ▒▓ ░▒▓░
+  ░   ░   ▒   ▒▒ ░░  ░      ░ ░ ░  ░     ░ ▒ ▒░    ░ ░░   ░ ░  ░  ░▒ ░ ▒░
+░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░
+      ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░
+                                                     ░                   """]
 
 class SaveManager:
     def __init__(self, filename=None):
@@ -119,10 +155,22 @@ class SaveManager:
             print(f"Aie Aie Aie, une erreur...: {e}")
             return False
 
-    def raw_save(self, key, value):
-        with open(self.filename, "w") as f: json.dump({key: value}, f, indent=4)
+    def raw_save(self, data):
+        """
+        Docstring for raw_save
+        Va enregistrer data en écrasant dans un json en écrasant tout ce qui se passe BOOM
 
-    def load(self): return self.json_data # Je recupere le contenu du json
+        :param data: dict : Les nouvelles data a mettre donc!!! (je sais pas pourquoi je suis content, pourquoi mettre !*3 ? UwU )
+        """
+        with open(self.filename, "w") as f: json.dump(data, f, indent=4)
+
+    def load(self):
+        """
+        Docstring for load
+
+        return : dict : Les data du json
+        """
+        return self.json_data
 
 class Player:
     def __init__(self, symbol, color, x, y, player_name=None):
@@ -179,7 +227,7 @@ class Player:
             return True
         return False
 
-    # Toutes ces fonctions permet de bouger le player, retourne la meme chose, juste c'est nommé pour que ca soit plus visuel est simple (partique lors de test)
+    # Toutes ces fonctions permet de bouger le player, retourne la meme chose, juste c'est nommé pour que ca soit plus visuel est simple (partique lors de test) (On m'a dit pas besoin de doc string)
     def move_left(self): return self.move(-1, 0)
     def move_right(self): return self.move(1, 0)
     def move_up(self):  return self.move(0, -1)
@@ -206,17 +254,6 @@ class Board:
 
         self.save_manager = SaveManager()
 
-        self.GAME_OVER_SCREEN = """
-  ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███
- ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒
-▒██░▄▄▄░▒██  ▀█▄  ▓██    ▓██░▒███      ▒██░  ██▒ ▓██  █▒░▒███   ▓██ ░▄█ ▒
-░▓█  ██▓░██▄▄▄▄██ ▒██    ▒██ ▒▓█  ▄    ▒██   ██░  ▒██ █░░▒▓█  ▄ ▒██▀▀█▄
-░▒▓███▀▒ ▓█   ▓██▒▒██▒   ░██▒░▒████▒   ░ ████▓▒░   ▒▀█░  ░▒████▒░██▓ ▒██▒
- ░▒   ▒  ▒▒   ▓▒█░░ ▒░   ░  ░░░ ▒░ ░   ░ ▒░▒░▒░    ░ ▐░  ░░ ▒░ ░░ ▒▓ ░▒▓░
-  ░   ░   ▒   ▒▒ ░░  ░      ░ ░ ░  ░     ░ ▒ ▒░    ░ ░░   ░ ░  ░  ░▒ ░ ▒░
-░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░
-      ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░
-                                                     ░                   """
 
 
 
@@ -273,7 +310,7 @@ class Board:
         sleep(1)
         clear()
 
-        print(f"{COLOR['white']}{self.GAME_OVER_SCREEN}{COLOR['reset']}") # affiche l'ecran de game over
+        print(f"{COLOR['white']}{ASCIIART[2]}{COLOR['reset']}") # affiche l'ecran de game over
         sleep(1)
 
         game_data = {}
@@ -353,14 +390,14 @@ class Board:
 
         return None
 
-class InputGestion(): #creation d'une class inputgestion pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier
+class InputManager(): #creation d'une class InputManager pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier
 
     def __init__(self,tab = None): #les controles des joueurs sont stocker dans une matrice tab de 2x4 pour les 2 joueurs et les 4 touches haut bas gauche droite
         if tab: self.input_table=tab #si tab existe alors self.inputtable prend la valeur de tab
         else: self.input_table = [[122,115,113,100],[105, 107, 106, 108]] #sinon alors self.inputtable devient une matrice remplie de 95 qui correspond en ascii au '_'
 
-    def afficher(self,idjoueur = 3): #une fonction qui affiche de manière esthetique les inputs des joueur
-        if idjoueur > 2 or idjoueur < 0: #si l'id du joueur dont on veut print les touches est mal précisé alors la fonction print les touches des 2 joueurs
+    def display(self,player_id = 3): #une fonction qui affiche de manière esthetique les inputs des joueur
+        if player_id > 2 or player_id < 0: #si l'id du joueur dont on veut print les touches est mal précisé alors la fonction print les touches des 2 joueurs
             print(f"""
 Joueur 1
 UP:{chr(self.input_table[0][0])}
@@ -377,11 +414,11 @@ RIGHT:{chr(self.input_table[1][3])}
 
         else: #si l'id est correctement specifié alors on print le joueur voulue
             print(f"""
-Joueur {'1' if idjoueur == 0 else '2'}
-UP:{chr(self.input_table[idjoueur][0])}
-DOWN:{chr(self.input_table[idjoueur][1])}
-LEFT:{chr(self.input_table[idjoueur][2])}
-RIGHT:{chr(self.input_table[idjoueur][3])}
+Joueur {'1' if player_id == 0 else '2'}
+UP:{chr(self.input_table[player_id][0])}
+DOWN:{chr(self.input_table[player_id][1])}
+LEFT:{chr(self.input_table[player_id][2])}
+RIGHT:{chr(self.input_table[player_id][3])}
 """)
 
     def identify_player(self, input_user):
@@ -401,22 +438,22 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
 
 
     def initbindingwin(self):
-        for idjoueur in range(2):
+        for player_id in range(2):
             for inp in range(4):
                 clear()
-                self.afficher(idjoueur)
-                self.input_table[idjoueur][inp]=ord(msvcrt.getwch())
-            self.afficher(idjoueur)
+                self.display(player_id)
+                self.input_table[player_id][inp]=ord(msvcrt.getwch())
+            self.display(player_id)
         return self
 
     def initbindinglinux(self):
         def main(stdscr):
-            for idjoueur in range(2):
+            for player_id in range(2):
                 for inp in range(4):
                     clear()
-                    self.afficher(idjoueur)
-                    self.input_table[idjoueur][inp]=stdscr.getch()
-                self.afficher(idjoueur)
+                    self.display(player_id)
+                    self.input_table[player_id][inp]=stdscr.getch()
+                self.display(player_id)
             return self
 
         if __name__ == '__main__':
@@ -428,6 +465,8 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
         else:
             input_user = self.inputs_linux()
 
+        if callback_queue is None: return input_user
+
         player_id = self.identify_player(input_user)
 
         if player_id is not None:
@@ -437,7 +476,195 @@ RIGHT:{chr(self.input_table[idjoueur][3])}
         return None
 
 
+class GameManager:
+    def __init__(self):
+        """
+        Docstring for __init__
+        
+        La classe qui va gerer le jeu, le menu, les input, ect... c'est un peu le fourre tout (meme si question fourre tout, board est pas mal non plus ^^)
+        """
+        self.input_config = SaveManager("config.json")
+        self.menu_input_config = None
+        self.input_manager = None
+        self._initialize_input()
+
+    def _initialize_input(self):
+        """Initialise la configuration des inputs"""
+        try:
+            # Accéder directement à json_data au lieu d'utiliser load()
+            config_data = self.input_config.json_data
+
+            # Prendre la première config si c'est une liste
+            if isinstance(config_data, list) and len(config_data) > 0:
+                layout = config_data[0]["layout"]
+            else:
+                layout = config_data["layout"]
+
+            self.input_manager = InputManager(layout)
+            self.menu_input_config = layout[0]
+        except:
+            keyboard_layout = input("""
+        1. AZERTY?
+        2. QWERTY?
+        """)
+            if int(keyboard_layout) == 1:
+                keyboard_keys = [122, 115, 113, 100]  # z, s, q, d
+            else:
+                keyboard_keys = [119, 115, 97, 100]   # w, s, a, d
+            self.input_manager = InputManager([keyboard_keys, [105, 107, 106, 108]])
+            self.menu_input_config = keyboard_keys
+
+    def keyboard_settings_menu(self):
+        """configutation des touches"""
+        clear()
+
+        joueur_temp = InputManager()
+
+        if name == 'nt':
+            for player_id in range(2):
+                for inp in range(4):
+                    clear()
+                    print("=== Config des touches ===\n")
+                    direction = ["HAUT", "BAS", "GAUCHE", "DROITE"][inp]
+                    print(f"Joueur {player_id + 1} - Appuyez sur la touche pour {direction}")
+                    joueur_temp.input_table[player_id][inp] = ord(msvcrt.getwch())
+        else:
+            pass # Linux on verra
+        self.input_config.raw_save({"layout": joueur_temp.input_table})
+
+
+        return joueur_temp
+
+    def credits(self):
+        clear()
+        print(ASCIIART[1])
+        if name == 'nt':
+            msvcrt.getwch()
+        else:
+            def main(stdscr):
+                stdscr.getch()
+            curses.wrapper(main)
+
+    def score(self):
+        clear()
+        save_manager = SaveManager()
+        scores = save_manager.load()
+
+        print(f"{COLOR['red']}=== Top 15 ===\n{COLOR['reset']}")
+
+        liste = []
+        for entry in scores:
+            for nom, info in entry.items():
+                liste.append([nom, info["score"], info["result"], info["date"]])
+
+        for i in range(len(liste)):
+            for j in range(i+1, len(liste)):
+                if liste[i][1] < liste[j][1]:
+                    liste[i], liste[j] = liste[j], liste[i]
+
+        for i in range(15):
+            if i < len(liste):                
+                print(f"""{COLOR[liste[i][0][7:]]}
+╔═ #{i+1:2d} ════════════════════════════
+║ Joueur   : {liste[i][0]}
+║ Score    : {liste[i][1]} points
+║ Résultat : {liste[i][2]}
+║ Date     : {liste[i][3]}
+╚════════════════════════════════════\n{COLOR['reset']}""")
+        
+        self.input_manager.input_common(None) # attendre un input pour retouner au menu
+        
+
+    def run_main_menu(self, menu):
+        """
+        Affiche le menu et execute ce qu'il faut, il peut retourner (true, joueur) si il a fini c'est qu'il faut lancer le jeu
+        """
+        selected_index = 0
+
+        while True:
+            menu.refresh_menu(selected_index)
+            selected_menu = menu.handle_menu_interaction(selected_index, self.menu_input_config)
+
+            if selected_menu == 0:
+                start_game_2v2(self.input_manager)
+
+            elif selected_menu == 1:
+                self.input_manager = self.keyboard_settings_menu()
+                self.menu_input_config = self.input_manager.input_table[0]
+                selected_index = selected_menu
+
+            elif selected_menu == 2:
+                self.credits()
+                selected_index = selected_menu
+
+            elif selected_menu == 3:
+                self.score()
+                selected_index = selected_menu
+
+    def run(self):
+        """Lance le jeu"""
+        menu = Menu()
+        self.run_main_menu(menu)
+
+
+class Menu:
+    def __init__(self):
+        """
+        Docstring for __init__
+        
+        Cette classe permet de gerer le menu principal
+        """
+        self.main_interface = f"{COLOR['green']}{ASCIIART[0]}{COLOR['reset']}"
+
+        colors_sample = sample(list(COLOR.keys())[:-1], k=4) # choisi 4 couleurs au hasard pour le menu SANS EN REPRENDRE 1 deja repris dans la liste
+        self.selection_list = [
+            f"{COLOR[colors_sample[0]]}Démarrer le jeu{COLOR['reset']}",
+            f"{COLOR[colors_sample[1]]}Touches Clavier{COLOR['reset']}",
+            f"{COLOR[colors_sample[2]]}Credits{COLOR['reset']}",
+            f"{COLOR[colors_sample[3]]}Score{COLOR['reset']}"
+        ]
+
+    def refresh_menu(self, selected_index=0):
+        """affiche le menu avec la selection actuelle"""
+        clear()
+        print(self.main_interface)
+        for i in range(len(self.selection_list)):
+            print(f"-[{'*' if selected_index == i else ' '}] {self.selection_list[i]}")
+
+    def handle_menu_interaction(self, selected_index=0, menu_input_config=None):
+        """
+        gere tout ce qui est navigation dans le menu
+        reuturn : l'optiuon selectionné
+        """
+        if name == 'nt':  # Windows
+            while True:
+                pinput = ord(msvcrt.getwch())
+
+                # valider
+                if pinput == menu_input_config[3]:  # Droite
+                    return selected_index
+
+                # aller en HAUT
+                elif pinput == menu_input_config[0]:
+                    selected_index = (selected_index - 1) % len(self.selection_list)
+
+                # aller en BAS
+                elif pinput == menu_input_config[1]:
+                    selected_index = (selected_index + 1) % len(self.selection_list)
+
+                self.refresh_menu(selected_index)
+
+        else:  # Linux, dans la grande logique
+            pass # on verra, on verra
+
 def start_game_2v2(input_manager):
+    """
+    Docstring for start_game_2v2
+    Cette fonction lance une partie de tron en 2v2
+
+    :param input_manager: La classe qui va gerer tout ce bazar d'input
+    Return rien du tout puisque c'est une boucle infinie qui se fini par un quit() méchant
+    """
     player_blue = Player("O", "blue", CONFIG_SIZE_X // 2, 1)  # haut au centre
     player_orange = Player("O", "orange", CONFIG_SIZE_X // 2, CONFIG_SIZE_Y - 2)  # bas au centre
 
@@ -501,179 +728,6 @@ def start_game_2v2(input_manager):
 
         # Petit pause pour sont petit coeur
         sleep(0.01)
-
-
-
-asciiart = [r"""
- ███████████
-▒█▒▒▒███▒▒▒█
-▒   ▒███  ▒  ████████   ██████  ████████
-    ▒███    ▒▒███▒▒███ ███▒▒███▒▒███▒▒███
-    ▒███     ▒███ ▒▒▒ ▒███ ▒███ ▒███ ▒███
-    ▒███     ▒███     ▒███ ▒███ ▒███ ▒███
-    █████    █████    ▒▒██████  ████ █████
-   ▒▒▒▒▒    ▒▒▒▒▒      ▒▒▒▒▒▒  ▒▒▒▒ ▒▒▒▒▒ """, r"""
-- Input management, music, menu : Renderaction
-- AI system, threading, animation, game system : @archibarbu
-
-This game is under MIT license.
-Feel free to contact : perso[aroba]archibarbu[dot]art
-Don't hesitate to commit !
-Thanks everyone.
-
-          ,'""`.
-         / _  _ \
-         |(@)(@)|
-         )  __  (
-        /,'))((`.\
-       (( ((  )) ))      hh
-        `\ `)(' /'
-"""]
-
-def score():
-    print("Fonctionnalité Score à venir...")
-    sleep(2)
-
-
-class GameManager:
-    def __init__(self):
-        self.input_config = SaveManager("config.json")
-        self.input_pour_le_menu = None
-        self.joueur = None
-        self._initialize_input()
-
-    def _initialize_input(self):
-        """Initialise la configuration des inputs"""
-        try:
-            # Accéder directement à json_data au lieu d'utiliser load()
-            config_data = self.input_config.json_data
-
-            # Prendre la première config si c'est une liste
-            if isinstance(config_data, list) and len(config_data) > 0:
-                layout = config_data[0]["layout"]
-            else:
-                layout = config_data["layout"]
-
-            self.joueur = InputGestion(layout)
-            self.input_pour_le_menu = layout[0]
-        except:
-            disposition = input("""
-        1. AZERTY?
-        2. QWERTY?
-        """)
-            if int(disposition) == 1:
-                disposition_du_clavier = [122, 115, 113, 100]  # z, s, q, d
-            else:
-                disposition_du_clavier = [119, 115, 97, 100]   # w, s, a, d
-            self.joueur = InputGestion([disposition_du_clavier, [105, 107, 106, 108]])
-            self.input_pour_le_menu = disposition_du_clavier
-
-    def menu_touches_clavier(self):
-        """configutation des touches"""
-        clear()
-
-        joueur_temp = InputGestion()
-
-        if name == 'nt':
-            for idjoueur in range(2):
-                for inp in range(4):
-                    clear()
-                    print("=== Config des touches ===\n")
-                    direction = ["HAUT", "BAS", "GAUCHE", "DROITE"][inp]
-                    print(f"Joueur {idjoueur + 1} - Appuyez sur la touche pour {direction}")
-                    joueur_temp.input_table[idjoueur][inp] = ord(msvcrt.getwch())
-        else:
-            pass # Linux on verra
-        self.input_config.raw_save("layout", joueur_temp.input_table)
-
-
-        return joueur_temp
-
-    def credits(self):
-        clear()
-        print(asciiart[1])
-        if name == 'nt':
-            msvcrt.getwch()
-        else:
-            def main(stdscr):
-                stdscr.getch()
-            curses.wrapper(main)
-
-    def lancer_menu_principal(self, menu):
-        """
-        Affique le menu et execute ce qu'il faut, il peut retourner (true, joueur) si il a fini c'est qu'il faut lancer le jeu
-        """
-        placement = 0
-
-        while True:
-            menu.refresh_menu(placement)
-            menu_selectionne = menu.lancer_interaction_avec_menu(placement, self.input_pour_le_menu)
-
-            if menu_selectionne == 0:
-                start_game_2v2(self.joueur)
-
-            elif menu_selectionne == 1:
-                self.joueur = self.menu_touches_clavier()
-                self.input_pour_le_menu = self.joueur.input_table[0]
-                placement = menu_selectionne
-
-            elif menu_selectionne == 2:
-                self.credits()
-                placement = menu_selectionne
-
-            elif menu_selectionne == 3:
-                score()
-                placement = menu_selectionne
-
-    def run(self):
-        """Lance le jeu"""
-        menu = Menu()
-        self.lancer_menu_principal(menu)
-
-
-class Menu:
-    def __init__(self, tron_ascii=asciiart[0]):
-        self.main_interface = tron_ascii
-        self.liste_des_selections = [
-            "Démarrer le jeu",
-            "Touches Clavier",
-            "Credits",
-            "Score"
-        ]
-
-    def refresh_menu(self, placement=0):
-        """affiche le menu avec la selection actuelle"""
-        clear()
-        print(self.main_interface)
-        for i in range(len(self.liste_des_selections)):
-            print(f"-[{'*' if placement == i else ' '}] {self.liste_des_selections[i]}")
-
-    def lancer_interaction_avec_menu(self, placement=0, input_pour_le_menu=None):
-        """
-        gere tout ce qui est navigation dans le menu
-        reuturn : l'optiuon selectionné
-        """
-        if name == 'nt':  # Windows
-            while True:
-                pinput = ord(msvcrt.getwch())
-
-                # valider
-                if pinput == input_pour_le_menu[3]:  # Droite
-                    return placement
-
-                # aller en HAUT
-                elif pinput == input_pour_le_menu[0]:
-                    placement = (placement - 1) % len(self.liste_des_selections)
-
-                # aller en BAS
-                elif pinput == input_pour_le_menu[1]:
-                    placement = (placement + 1) % len(self.liste_des_selections)
-
-                self.refresh_menu(placement)
-
-        else:  # Linux, dans la grande logique
-            pass # on verra, on verra
-
 
 def main():
     game_manager = GameManager()
