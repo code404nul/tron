@@ -77,7 +77,6 @@ def clear():
     system('cls' if name == 'nt' else 'clear') #pour éviter d'écrire system('cls') à chaque fois, on va écrire clear()
 
 COLOR = {
-    "black": "\033[30m",
     "red": "\033[31m",
     "green": "\033[32m",
     "yellow": "\033[33m",
@@ -244,7 +243,6 @@ class Player:
     def move_right(self): return self.move(1, 0)
     def move_up(self):  return self.move(0, -1)
     def move_down(self): return self.move(0, 1)
-    def move_auto(self): return self.move(self.current_direction)
 
 class Board:
     def __init__(self, players=None):
@@ -292,7 +290,7 @@ class Board:
         exit_true = False # Le exit_false et utile dans le cas ou 2 player se rentre dessus, plus de prévisition a la prochaine ligne
         for player in self.players:
 
-            previous_pos = player.previous_position
+            previous_pos = player.previous_position[1:] # FIX, pb de position 2 current pos et pos initial
 
             if (len(previous_pos) != len(set(previous_pos))) and len(previous_pos) > 3: # Verifie si dans les positions y a 2 fois la meme, et verifie si y a eu moins 3 value, toujours le fix biscornu et puis ca sera une feature si le joeur meurt des le debut, ca fonctionne comme ca on touche pas !
                 player.loser = True
@@ -377,23 +375,22 @@ class Board:
             self._game_over()
             return
 
-        for cell in range(len(self.board)): # pour afficher chaque cell
+        for cell in range(len(self.board)): # pour afficher chaque cellules 
             char, color = self.board[cell]
 
-            for p in self.players: #path_symbolr les path_symbols (enfin update juste les valeurs dans la liste)
-                if cell in [pos for pos in p.previous_position]:
-                    char, color = p.path_symbol, p.color
+            for p in self.players: # Pour chaque joueur
+                if cell in [pos for pos in p.previous_position]: # Si les case de previous_positon concerne cette case qui s'apprete a etre afficher 
+                    char, color = p.path_symbol, p.color # Mettre la couleur et le symbole du tracé
                     break
 
-            for player in self.players: #path_symbolr la pos actuelle
-                if cell == player.get_pos():
-                    char, color = player.symbol, player.color
+            for player in self.players: 
+                if cell == player.get_pos(): # si la case concerne la position current du joueur
+                    char, color = player.symbol, player.color # Mettre la couleur et le symbole concernant le joueur
                     break
-
-            if (cell + 1) % CONFIG_SIZE_X == 0: #path_symbolr tout le chemil blic (et fait les saut a la lignes)
-                print(f"{COLOR[color]}{char}{COLOR['reset']}")
-            else:
-                print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
+            if (cell + 1) % CONFIG_SIZE_X == 0: # Verifie que c'est le bord 
+                print(f"{COLOR[color]}{char}{COLOR['reset']}") # retour a la ligne
+            else: # sinon
+                print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True) # On affiche les charactere les un apres les autres 
 
         return None
 
@@ -479,13 +476,13 @@ RIGHT:{chr(self.input_table[player_id][3])}
         else:
             input_user = self.inputs_linux()
 
-        if callback_queue is None: return input_user
+        if callback_queue is None: return input_user # Si aucune queue est concerné par l'histoire alors retourner simplement l'input
 
         player_id = self.identify_player(input_user)
 
         if player_id is not None:
-            result = (self.input_table[player_id].index(input_user), player_id)
-            callback_queue.put(result) # Va mettre le resultat dans la queux a vote start_game_1v1
+            result = (self.input_table[player_id].index(input_user), player_id) # L'index de sur la table de l'input du joueur concerner, et son id
+            callback_queue.put(result) # Va mettre le resultat dans la queux a notre start_game_1v1
             return result
         return None
 
@@ -505,10 +502,9 @@ class GameManager:
     def _initialize_input(self):
         """Initialise la configuration des inputs"""
         try:
-            # Accéder directement à json_data au lieu d'utiliser load()
-            config_data = self.input_config.json_data
-
-            # Prendre la première config si c'est une liste
+            config_data = self.input_config.load()
+            
+            # Prendre la première config si c'est une liste, normalement ca l'est
             if isinstance(config_data, list) and len(config_data) > 0:
                 layout = config_data[0]["layout"]
             else:
@@ -550,6 +546,11 @@ class GameManager:
         return joueur_temp
 
     def credits(self):
+        """
+        Docstring for credits
+        
+        affiche les crédits
+        """
         clear()             #clear le terminal
         print(ASCIIART[1])  #print les credits
         if name == 'nt':    
@@ -558,6 +559,11 @@ class GameManager:
             pass
 
     def score(self):
+        """
+        Docstring for score
+        
+        affiche les scores
+        """
         clear()
         save_manager = SaveManager()
         scores = save_manager.load()
@@ -569,7 +575,7 @@ class GameManager:
             for nom, info in entry.items():
                 liste.append([nom, info["score"], info["result"], info["date"]])
 
-        for i in range(len(liste)):
+        for i in range(len(liste)): # trie par insertion
             for j in range(i+1, len(liste)):
                 if liste[i][1] < liste[j][1]:
                     liste[i], liste[j] = liste[j], liste[i]
@@ -685,7 +691,7 @@ def start_game_1v1(input_manager):
     board_instance.add_player(player_blue)
     board_instance.add_player(player_orange)
 
-    callback_queue = queue.Queue() # Queue pour gerer la queue d'input
+    callback_queue = queue.Queue() # Queue pour gerer la queue d'input, ca va permettre de pouvoir "fait tourner le jeu" et de recuperer les inputs en meme temps (threading) et la queue va permettre a ce que chaque frame, le programme puisse traiter les inputs detectés. 
 
     # mapping des directions
     DIRECTION_MAP = {
