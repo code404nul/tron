@@ -68,3 +68,10 @@ Bryan fix pb reccurcivité menu ajout de commentaire UwU
 
 Jules Final du tron_prof, presque tout fini
 Bryan gestion de la musique et du menu on va dire que le menu et fini
+
+05/01/25
+
+Jules correction buyg commentaire
+Bryan correzction buyg, commentaire élan de compéhenstion
+
+## LANCER tron_prof.py
