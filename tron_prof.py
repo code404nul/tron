@@ -461,10 +461,10 @@ RIGHT:{chr(self.input_table[player_id][3])}
         :param self: Description
         """
         for player_id in range(2):
-            for inp in range(4):
+            for inp in range(4): #parcours par indince du tableau self.input_table
                 clear()
                 self.display(player_id)
-                self.input_table[player_id][inp]=ord(msvcrt.getwch())
+                self.input_table[player_id][inp]=ord(msvcrt.getwch()) #attend un input exterieur, puis le stock en ascii(ex: z->122) dans self.input_table
             self.display(player_id)
         return self
 
@@ -653,8 +653,8 @@ class Menu:
     def refresh_menu(self, selected_index=0):
         """affiche le menu avec la selection actuelle"""
         clear()
-        print(self.main_interface)
-        for i in range(len(self.selection_list)):
+        print(self.main_interface) #print le logo du jeu
+        for i in range(len(self.selection_list)): #parcours les éléments de self.selection_list par indice
             print(f"-[{'*' if selected_index == i else ' '}] {self.selection_list[i]}")
 
     def handle_menu_interaction(self, selected_index=0, menu_input_config=None):
@@ -664,18 +664,18 @@ class Menu:
         """
         if name == 'nt':  # Windows
             while True:
-                pinput = ord(msvcrt.getwch())
+                pinput = ord(msvcrt.getwch()) #en attente d'une entrée clavier
 
                 # valider
-                if pinput == menu_input_config[3]:  # Droite
+                if pinput == menu_input_config[3]: #touche D
                     return selected_index
 
                 # aller en HAUT
-                elif pinput == menu_input_config[0]:
+                elif pinput == menu_input_config[0]: #touche z ou w en fonction du clavier
                     selected_index = (selected_index - 1) % len(self.selection_list)
 
                 # aller en BAS
-                elif pinput == menu_input_config[1]:
+                elif pinput == menu_input_config[1]: #touche s
                     selected_index = (selected_index + 1) % len(self.selection_list)
 
                 self.refresh_menu(selected_index)
