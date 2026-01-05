@@ -136,8 +136,8 @@ class SaveManager:
         :param self: Description
         :param filename: De quel json parle ton?"""
         if filename is None:
-            script_dir = dirname(abspath(__file__))
-            filename = join(script_dir, "save.json")
+            script_dir = dirname(abspath(__file__))# IL va recuperer le chemin absolue du sossier ou est le fichier executé
+            filename = join(script_dir, "save.json") # Le chemin du fichier actuelle du dossier d'execution + save.json
 
         if not path.exists(filename):
             with open(filename, "w") as f:
@@ -164,7 +164,7 @@ class SaveManager:
             with open(self.filename, "w") as f:
                 f.write(json.dumps(self.json_data, indent=4)) # tout re-ecrire le json précédent + avec le append, le score de cette partie, ps le indent permet d'avoir un json lisible, parce que quand on cherchait les bug c'etait pas ouf
             return True
-        except Exception as e:
+        except Exception as e: # Exception sera l'erreur trouvé par le try. 
             print(f"Aie Aie Aie, une erreur...: {e}")
             return False
 
@@ -228,7 +228,7 @@ class Player:
         new_x = self.x + dx
         new_y = self.y + dy
 
-        #Verifie Qu'il est dans la grid 1, taille min
+        #Verifieque la nouvelle postion x au debut de l'axe x ni début (=0) ni a la fin, meme logique pour y, tout ca dans le but de respectetr les bords
         if 1 <= new_x < CONFIG_SIZE_X - 1 and 1 <= new_y < CONFIG_SIZE_Y - 1:
             self.previous_position.append(self.get_pos())
 
@@ -245,8 +245,6 @@ class Player:
     def move_up(self):  return self.move(0, -1)
     def move_down(self): return self.move(0, 1)
     def move_auto(self): return self.move(self.current_direction)
-
-    def update_direction(self, key): self.current_direction = key
 
 class Board:
     def __init__(self, players=None):
@@ -274,15 +272,15 @@ class Board:
 
         Ne retourne rien, car update self.board aux seins de l'instance
         """
-        self.board = [("#", "white")] * CONFIG_SIZE_X # border du dessus
+        self.board = [("#", "white")] * CONFIG_SIZE_X # créer une premiere ligne de '#' pour representer la bordure de dessus
 
         #Ligne des sides
-        for i in range(CONFIG_SIZE_Y - 2):
-            self.board.append(("#", "white"))
-            self.board += [(" ", "black")] * (CONFIG_SIZE_X - 2)
-            self.board.append(("#", "white"))
+        for i in range(CONFIG_SIZE_Y - 2):                              # Boucle pour représenter tout les lignes (en dehors du bord haut et bas) (tout les lignes qui sont comme ca ->  #--------#)
+            self.board.append(("#", "white"))                           #
+            self.board += [(" ", "black")] * (CONFIG_SIZE_X - 2)        #--------
+            self.board.append(("#", "white"))                           #--------#
 
-        self.board += [("#", "white")] * CONFIG_SIZE_X #border du dessous
+        self.board += [("#", "white")] * CONFIG_SIZE_X # créer une derniere ligne de '#' pour representer la bordure de dessous
 
     def _check_collision(self):
         """
@@ -294,7 +292,7 @@ class Board:
         exit_true = False # Le exit_false et utile dans le cas ou 2 player se rentre dessus, plus de prévisition a la prochaine ligne
         for player in self.players:
 
-            previous_pos = player.previous_position[1:] # Fix biscornu de position inital qui arrive 2 fois
+            previous_pos = player.previous_position
 
             if (len(previous_pos) != len(set(previous_pos))) and len(previous_pos) > 3: # Verifie si dans les positions y a 2 fois la meme, et verifie si y a eu moins 3 value, toujours le fix biscornu et puis ca sera une feature si le joeur meurt des le debut, ca fonctionne comme ca on touche pas !
                 player.loser = True
@@ -431,9 +429,16 @@ RIGHT:{chr(self.input_table[player_id][3])}
 """)
 
     def identify_player(self, input_user):
+        """
+        Docstring pour identify_player
+        
+        retorn le joeur concerner
+        :param self: Description
+        :param input_user: Descinput présséription
+        """
         for i in range(2):
-            if input_user in self.input_table[i]:
-                return i
+            if input_user in self.input_table[i]: # si l'input préssé et dans la table d'un joueur 
+                return i # retourner l'indec du joueur 
         return None
 
     def inputs_windows(self): #cette fonction return la touche pressé sous forme decimal en ascii(ex: si 'z' est pressé alors ça return 122)
@@ -441,12 +446,15 @@ RIGHT:{chr(self.input_table[player_id][3])}
 
 
     def inputs_linux(self): #cette fonction fait pareil que inputs_windows() mais en utilisant curses pour linux
-        def main(stdscr):
-            return stdscr.getch() #
-        return curses.wrapper(main) #
+        pass #plus tard
 
 
     def initbindingwin(self):
+        """
+        Docstring pour initbindingwin
+        bruiding des inputs windows 
+        :param self: Description
+        """
         for player_id in range(2):
             for inp in range(4):
                 clear()
@@ -456,19 +464,16 @@ RIGHT:{chr(self.input_table[player_id][3])}
         return self
 
     def initbindinglinux(self):
-        def main(stdscr):
-            for player_id in range(2):
-                for inp in range(4):
-                    clear()
-                    self.display(player_id)
-                    self.input_table[player_id][inp]=stdscr.getch()
-                self.display(player_id)
-            return self
-
-        if __name__ == '__main__':
-            return curses.wrapper(main)
+        pass # plus tard
 
     def input_common(self, callback_queue):
+        """
+        Docstring pour input_common
+        
+        retour l'input concerné, dans une fonction multi platforme
+        :param self: Description
+        :param callback_queue: la queue que l'input va traiter
+        """
         if is_win:
             input_user = self.inputs_windows()
         else:
@@ -545,14 +550,12 @@ class GameManager:
         return joueur_temp
 
     def credits(self):
-        clear()
-        print(ASCIIART[1])
-        if name == 'nt':
-            msvcrt.getwch()
-        else:
-            def main(stdscr):
-                stdscr.getch()
-            curses.wrapper(main)
+        clear()             #clear le terminal
+        print(ASCIIART[1])  #print les credits
+        if name == 'nt':    
+            msvcrt.getwch() #stop le programme en attente d'un input clavier pour que l'utilisateur puisse lire les credits et appuyer sur n'importe quel touche pour retourner au menu principal
+        else: #linux plus tard
+            pass
 
     def score(self):
         clear()
