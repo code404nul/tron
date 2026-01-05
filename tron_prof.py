@@ -42,10 +42,13 @@ OOOh tiens :
 
 On Windows, UTF-8 is used for the console device. Non-character devices such as disk files and pipes use the system locale encoding (i.e. the ANSI codepage). Non-console character devices such as NUL (i.e. where isatty() returns True) use the value of the console input and output codepages at startup, respectively for stdin and stdout/stderr.
 Les saintes paroles sont longues mais disponible ici: https://docs.python.org/3/library/sys.html
+
+Un lundi matin, a la surpirse général le programme ne fonctionnait pas. Pourquoi ? sys.stderr.isatty() ne fonctionnait pas car n'existait pas
+Nous avons donc en urgance, trouver ine alternative interne, os.isatty
 """
 
 from random import sample
-from os import system, path, name, getcwd # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
+from os import system, path, name, getcwd, isatty # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
 from os.path import dirname, abspath, join
 from time import sleep, mktime, localtime, time # Time est utiliser pour gerer le temps. ctime for convert sec to date str
 import json # La lib json permet de manager les json
@@ -740,7 +743,7 @@ def main():
     game_manager.run()
 
 
-if not sys.stderr.isatty():
+if not isatty(1): # Le 1 et pour verrifier dans stdout, il verifie que la sortie et un terminal conventionnel
     system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
     winsound.PlaySound('tronost.wav', winsound.SND_FILENAME | winsound.SND_LOOP) # lance une musique, loupé
 else:
@@ -751,214 +754,4 @@ else:
 
 RAPPORT AUTOMATISE :
 
-# Rapport d'Analyse du Code - Jeu Tron en Console
-
-## Vue d'Ensemble
-
-Ce projet implémente une version console du jeu Tron en Python, permettant à deux joueurs de s'affronter en temps réel. Le code utilise des techniques avancées pour gérer les entrées clavier asynchrones et l'affichage dans le terminal.
-
-## Architecture Générale
-
-### Classes Principales
-
-**SaveManager**
-- Gère la persistance des données via JSON
-- Sauvegarde les scores et statistiques des parties
-- Permet le chargement et l'écrasement de données
-
-**Player**
-- Représente un joueur avec sa position, couleur, symbole
-- Gère les déplacements et la détection de trajectoire
-- Calcule automatiquement le score (10 points par mouvement, 100 pour la victoire)
-- Mémorise l'historique complet des positions
-
-**Board**
-- Gère l'affichage du plateau de jeu (23×46 cellules par défaut)
-- Détecte les collisions (bordures, trajectoires propres, adversaires)
-- Orchestre le déroulement et la fin de partie
-- Intègre la sauvegarde automatique des résultats
-
-**InputManager**
-- Configure les touches de contrôle (AZERTY/QWERTY)
-- Gère les entrées clavier multi-plateforme (Windows/Linux)
-- Supporte la reconfiguration personnalisée des touches
-
-**GameManager**
-- Point d'entrée principal de l'application
-- Initialise la configuration depuis JSON
-- Gère le menu principal et la navigation
-
-**Menu**
-- Interface du menu avec sélection colorée aléatoire
-- Options : jouer, configurer touches, crédits, scores
-
-## Fonctionnalités Techniques
-
-### Gestion des Entrées Temps Réel
-
-Le code utilise un système de **threading** sophistiqué :
-- Un thread dédié écoute continuellement les entrées clavier
-- Une `queue.Queue()` stocke les commandes sans blocage
-- La boucle principale consomme la queue et met à jour les directions
-- Déplacement automatique toutes les 0.5 secondes (2 FPS)
-
-Cette architecture évite le blocage de l'affichage pendant l'attente d'entrées utilisateur.
-
-### Affichage Console
-
-- **Codes ANSI** pour la colorisation (7 couleurs définies)
-- Système de rendu basé sur une liste linéaire représentant la grille 2D
-- Calcul de position : `y * CONFIG_SIZE_X + x`
-- Effacement de l'écran entre chaque frame (`cls`/`clear`)
-
-### Détection Multi-Plateforme
-
-Le code détecte l'environnement d'exécution :
-- **Windows** : `msvcrt` pour les entrées, `winsound` pour l'audio
-- **Linux** : `curses` pour les entrées (partiellement implémenté)
-- **EduPython** : Détection via `sys.stderr.isatty()` avec relance automatique dans PowerShell
-
-## Points Forts
-
-1. **Architecture modulaire** : séparation claire des responsabilités
-2. **Gestion robuste des entrées** : système asynchrone évitant les blocages
-3. **Persistance des données** : sauvegarde JSON structurée avec horodatage
-4. **Interface colorée** : utilisation créative des codes ANSI
-5. **Menu interactif** : navigation intuitive avec feedback visuel
-6. **Système de scoring** : classement des 15 meilleurs scores
-
-## Points d'Amélioration
-
-### Bugs et Problèmes
-
-1. **Collision initiale** : Le commentaire mentionne un "fix biscornu" pour éviter une détection de collision au démarrage (ligne 285)
-2. **Incompatibilité Python 3.13+** sur Linux (mentionné dans l'en-tête)
-3. **Support Linux incomplet** : nombreux `pass` dans le code curses
-4. **Relance automatique brutale** : utilise `system()` et `quit()` au lieu d'une boucle propre
-
-### Problèmes de Code
-
-**Conventions de nommage incohérentes**
-```python
-CONFIG_SIZE_Y  # Majuscules (constante)
-clear = lambda  # Minuscules (fonction)
-```
-
-**Fonction lambda pour clear inutile**
-```python
-clear = lambda: system('cls' if name == 'nt' else 'clear')
-# Pourrait être une fonction normale
-```
-
-**Gestion d'erreurs insuffisante**
-```python
-try:
-    layout = config_data[0]["layout"]
-except:  # Capture trop large
-    keyboard_layout = input(...)
-```
-
-**Commentaires en français mélangés au code**
-- Rendent la maintenance difficile pour des contributeurs internationaux
-- Mélange de styles (docstrings formelles vs commentaires informels)
-
-### Architecture
-
-**Couplage fort**
-- `Board` gère à la fois l'affichage ET la logique de jeu
-- `_game_over()` lance un nouveau processus au lieu de retourner au menu
-
-**Logique de relance problématique**
-```python
-system(f"start powershell.exe {sys.executable} {join(...)}")
-quit()
-```
-Crée de nouveaux processus au lieu de boucler proprement.
-
-**Magic numbers**
-```python
-if len(previous_pos) > 3:  # Pourquoi 3 ?
-sleep(0.01)  # Pourquoi 0.01 ?
-```
-
-## Sécurité et Robustesse
-
-### Risques
-
-1. **Injection de commandes** : utilisation de `system()` avec des chemins non validés
-2. **Absence de validation** : les entrées utilisateur ne sont pas vérifiées
-3. **Gestion d'erreurs JSON** : risque de corruption si l'écriture échoue
-4. **Thread non stoppable** : le thread d'écoute tourne indéfiniment sans mécanisme d'arrêt propre
-
-### Suggestions
-
-```python
-# Validation des entrées
-def validate_player_name(name):
-    if not name or len(name) > 50:
-        raise ValueError("Nom invalide")
-    return name.strip()
-
-# Arrêt propre des threads
-class InputListener:
-    def __init__(self):
-        self.running = True
-
-    def stop(self):
-        self.running = False
-```
-
-## Performance
-
-### Points d'Attention
-
-- **Effacement complet de l'écran** à chaque frame (coûteux)
-- **Boucle vide avec sleep(0.01)** : consomme du CPU inutilement
-- **Recalcul complet du plateau** à chaque affichage
-
-### Optimisations Possibles
-
-```python
-# Différentiel d'affichage (n'afficher que les changements)
-def update_cell(x, y, char, color):
-    print(f"\033[{y};{x}H{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True)
-```
-
-## Documentation
-
-### Points Positifs
-- Docstrings présentes sur la plupart des méthodes
-- Commentaires expliquant les choix techniques (isatty, threading)
-- ASCII art soigné pour l'interface
-
-### Améliorations Nécessaires
-- Format des docstrings non standard (mélange français/structure libre)
-- Manque de documentation sur les formats de données JSON
-- Absence de diagramme d'architecture
-
-## Recommandations
-
-### Court Terme
-1. Compléter le support Linux (curses)
-2. Remplacer `quit()` et `system()` par une boucle de jeu propre
-3. Ajouter validation des entrées utilisateur
-4. Implémenter un arrêt propre des threads
-
-### Moyen Terme
-1. Séparer affichage et logique (pattern MVC)
-2. Créer un système de configuration centralisé
-3. Ajouter des tests unitaires
-4. Documenter les formats de données
-
-### Long Terme
-1. Support multi-joueurs en réseau
-2. IA pour mode solo
-3. Rejouabilité des parties (replay)
-4. Interface graphique optionnelle (pygame/tkinter)
-
-## Conclusion
-
-Ce projet démontre une bonne compréhension des concepts avancés Python (threading, gestion système, entrées/sorties). L'architecture modulaire et le système d'entrées asynchrones sont particulièrement bien pensés. Cependant, le code souffre de quelques problèmes de robustesse et de portabilité qui nécessiteraient un refactoring pour une utilisation en production. Dans un contexte pédagogique (NSI), ce projet illustre excellemment les défis du développement temps réel et multi-plateforme.
-
-**Note globale** : 7/10 - Projet ambitieux et fonctionnel avec des fondations solides, mais nécessitant du polish pour être considéré comme robuste.
 """
