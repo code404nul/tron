@@ -83,9 +83,11 @@ COLOR = {
     "blue": "\033[34m",
     "orange": "\033[38;5;208m",
     "white": "\033[37m",
+    "black": "\033[30m",
     "reset": "\033[0m"
 } # Toutes ces valeurs permette de d'afficher des color dans le terminal, je ne l'ai ai pas trouver au hasard, j'ai trouver ca sur internet.
 
+FPS = 2
 CONFIG_SIZE_Y: int = 23  # Utiliser pour les border gauche et droit en gros le nombre de character sur la vertical (colone) Le nombre 23 a été défini parce qu'il est permet d'avoir une grande grille tout en restant raisonable pour etre poser pas trop de problème avec les consoles
 CONFIG_FACTOR: int = 2 # Le facteur d'agrandissement pour le border Gauche et droit
 CONFIG_SIZE_X: int = CONFIG_SIZE_Y * CONFIG_FACTOR # C'est utilse pour le border haut et bas, car la longeur de chaque cell de charactère et plus petite que la haute des caractere en gros le nombre de character sur l'horizontal (lignes)
@@ -163,7 +165,7 @@ class SaveManager:
             with open(self.filename, "w") as f:
                 f.write(json.dumps(self.json_data, indent=4)) # tout re-ecrire le json précédent + avec le append, le score de cette partie, ps le indent permet d'avoir un json lisible, parce que quand on cherchait les bug c'etait pas ouf
             return True
-        except Exception as e: # Exception sera l'erreur trouvé par le try. 
+        except Exception as e: # Exception sera l'erreur trouvé par le try.
             print(f"Aie Aie Aie, une erreur...: {e}")
             return False
 
@@ -375,32 +377,37 @@ class Board:
             self._game_over()
             return
 
-        for cell in range(len(self.board)): # pour afficher chaque cellules 
+        for cell in range(len(self.board)): # pour afficher chaque cellules
             char, color = self.board[cell]
 
             for p in self.players: # Pour chaque joueur
-                if cell in [pos for pos in p.previous_position]: # Si les case de previous_positon concerne cette case qui s'apprete a etre afficher 
+                if cell in [pos for pos in p.previous_position]: # Si les case de previous_positon concerne cette case qui s'apprete a etre afficher
                     char, color = p.path_symbol, p.color # Mettre la couleur et le symbole du tracé
                     break
 
-            for player in self.players: 
+            for player in self.players:
                 if cell == player.get_pos(): # si la case concerne la position current du joueur
                     char, color = player.symbol, player.color # Mettre la couleur et le symbole concernant le joueur
                     break
-            if (cell + 1) % CONFIG_SIZE_X == 0: # Verifie que c'est le bord 
+            if (cell + 1) % CONFIG_SIZE_X == 0: # Verifie que c'est le bord
                 print(f"{COLOR[color]}{char}{COLOR['reset']}") # retour a la ligne
             else: # sinon
-                print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True) # On affiche les charactere les un apres les autres 
+                print(f"{COLOR[color]}{char}{COLOR['reset']}", end="", flush=True) # On affiche les charactere les un apres les autres
 
         return None
 
-class InputManager(): #creation d'une class InputManager pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier
+class InputManager():
+    def __init__(self,tab = None):
+        """creation d'une class InputManager pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier"""
 
-    def __init__(self,tab = None): #les controles des joueurs sont stocker dans une matrice tab de 2x4 pour les 2 joueurs et les 4 touches haut bas gauche droite
+
+        #les controles des joueurs sont stocker dans une matrice tab de 2x4 pour les 2 joueurs et les 4 touches haut bas gauche droite
         if tab: self.input_table=tab #si tab existe alors self.inputtable prend la valeur de tab
         else: self.input_table = [[122,115,113,100],[105, 107, 106, 108]] #sinon alors self.inputtable devient une matrice remplie de 95 qui correspond en ascii au '_'
 
-    def display(self,player_id = 3): #une fonction qui affiche de manière esthetique les inputs des joueur
+    def display(self,player_id = 3):
+        """une fonction qui affiche de manière esthetique les inputs des joueur
+        Ne retournz rien"""
         if player_id > 2 or player_id < 0: #si l'id du joueur dont on veut print les touches est mal précisé alors la fonction print les touches des 2 joueurs
             print(f"""
 Joueur 1
@@ -428,17 +435,18 @@ RIGHT:{chr(self.input_table[player_id][3])}
     def identify_player(self, input_user):
         """
         Docstring pour identify_player
-        
+
         retorn le joeur concerner
         :param self: Description
         :param input_user: Descinput présséription
         """
         for i in range(2):
-            if input_user in self.input_table[i]: # si l'input préssé et dans la table d'un joueur 
-                return i # retourner l'indec du joueur 
+            if input_user in self.input_table[i]: # si l'input préssé et dans la table d'un joueur
+                return i # retourner l'indec du joueur
         return None
 
-    def inputs_windows(self): #cette fonction return la touche pressé sous forme decimal en ascii(ex: si 'z' est pressé alors ça return 122)
+    def inputs_windows(self):
+        """cette fonction return la touche pressé sous forme decimal en ascii(ex: si 'z' est pressé alors ça return 122)"""
         return ord(msvcrt.getwch())
 
 
@@ -449,7 +457,7 @@ RIGHT:{chr(self.input_table[player_id][3])}
     def initbindingwin(self):
         """
         Docstring pour initbindingwin
-        bruiding des inputs windows 
+        bruiding des inputs windows
         :param self: Description
         """
         for player_id in range(2):
@@ -466,7 +474,7 @@ RIGHT:{chr(self.input_table[player_id][3])}
     def input_common(self, callback_queue):
         """
         Docstring pour input_common
-        
+
         retour l'input concerné, dans une fonction multi platforme
         :param self: Description
         :param callback_queue: la queue que l'input va traiter
@@ -503,7 +511,7 @@ class GameManager:
         """Initialise la configuration des inputs"""
         try:
             config_data = self.input_config.load()
-            
+
             # Prendre la première config si c'est une liste, normalement ca l'est
             if isinstance(config_data, list) and len(config_data) > 0:
                 layout = config_data[0]["layout"]
@@ -548,12 +556,12 @@ class GameManager:
     def credits(self):
         """
         Docstring for credits
-        
+
         affiche les crédits
         """
         clear()             #clear le terminal
         print(ASCIIART[1])  #print les credits
-        if name == 'nt':    
+        if name == 'nt':
             msvcrt.getwch() #stop le programme en attente d'un input clavier pour que l'utilisateur puisse lire les credits et appuyer sur n'importe quel touche pour retourner au menu principal
         else: #linux plus tard
             pass
@@ -561,7 +569,7 @@ class GameManager:
     def score(self):
         """
         Docstring for score
-        
+
         affiche les scores
         """
         clear()
@@ -634,7 +642,7 @@ class Menu:
         """
         self.main_interface = f"{COLOR['green']}{ASCIIART[0]}{COLOR['reset']}"
 
-        colors_sample = sample(list(COLOR.keys())[:-1], k=4) # choisi 4 couleurs au hasard pour le menu SANS EN REPRENDRE 1 deja repris dans la liste
+        colors_sample = sample(list(COLOR.keys())[:-2], k=4) # choisi 4 couleurs au hasard pour le menu SANS EN REPRENDRE 1 deja repris dans la liste, on exclu reset et black
         self.selection_list = [
             f"{COLOR[colors_sample[0]]}Démarrer le jeu{COLOR['reset']}",
             f"{COLOR[colors_sample[1]]}Touches Clavier{COLOR['reset']}",
@@ -691,7 +699,7 @@ def start_game_1v1(input_manager):
     board_instance.add_player(player_blue)
     board_instance.add_player(player_orange)
 
-    callback_queue = queue.Queue() # Queue pour gerer la queue d'input, ca va permettre de pouvoir "fait tourner le jeu" et de recuperer les inputs en meme temps (threading) et la queue va permettre a ce que chaque frame, le programme puisse traiter les inputs detectés. 
+    callback_queue = queue.Queue() # Queue pour gerer la queue d'input, ca va permettre de pouvoir "fait tourner le jeu" et de recuperer les inputs en meme temps (threading) et la queue va permettre a ce que chaque frame, le programme puisse traiter les inputs detectés.
 
     # mapping des directions
     DIRECTION_MAP = {
@@ -723,7 +731,7 @@ def start_game_1v1(input_manager):
                 direction, player_id = callback_message
                 dx, dy = DIRECTION_MAP[direction]
 
-                if player_id == 0:
+                if player_id == 0: # cahnger la direction du joueur concerné
                     player_blue.current_direction = (dx, dy)
                 elif player_id == 1:
                     player_orange.current_direction = (dx, dy)
@@ -732,8 +740,9 @@ def start_game_1v1(input_manager):
                 break
 
         current_time = time()
-        if current_time - last_move_time >= 0.5: # Tout les 0.5 un peu pres refaire une image donc 2 fps
+        if current_time - last_move_time >= (1/FPS): # Tout les 0.5 un peu pres refaire une image donc 2 fps
 
+            # continuer de bouger dans la meme direction
             dx_blue, dy_blue = player_blue.current_direction
             player_blue.move(dx_blue, dy_blue)
 
@@ -763,4 +772,73 @@ else:
 
 RAPPORT AUTOMATISE :
 
+# Rapport d'analyse du code Tron
+
+## Vue d'ensemble
+Ce projet est une implémentation du jeu Tron en console Python, développé par deux étudiants (Renderaction et @archibarbu). Le jeu permet à deux joueurs de s'affronter en temps réel dans un terminal, chacun laissant une traînée derrière lui. Le premier qui percute un obstacle perd.
+
+## Points forts
+
+### Architecture logique
+Le code suit une structure orientée objet claire avec des responsabilités bien séparées :
+- `Player` : gestion individuelle des joueurs
+- `Board` : gestion du plateau et des collisions
+- `InputManager` : capture des entrées clavier
+- `GameManager` : orchestration générale
+- `SaveManager` : persistance des données
+
+### Fonctionnalités complètes
+- Menu principal avec navigation
+- Configuration personnalisable des touches
+- Système de score avec sauvegarde JSON
+- Écran de crédits
+- Détection de collisions (murs, adversaire, soi-même)
+- Gestion multi-thread pour les inputs en temps réel
+
+### Détails techniques intéressants
+- Utilisation de threads pour gérer les entrées sans bloquer le rendu
+- Système de queue pour synchroniser les inputs avec la boucle de jeu
+- Détection intelligente de l'environnement (EduPython, Windows/Linux)
+- Codes ANSI pour les couleurs dans le terminal
+
+## Points à améliorer
+
+### Maintenabilité du code
+**Commentaires excessifs et redondants** : Le code contient beaucoup de commentaires en français mélangeant explications, blagues et notes personnelles, ce qui nuit à la lisibilité professionnelle.
+
+**Constantes magiques** : Plusieurs valeurs hardcodées (FPS=2, scores de 10 et 100 points) devraient être des constantes nommées ou configurables.
+
+**Gestion d'erreurs limitée** : Le try-except dans `_initialize_input()` capture toutes les exceptions sans distinction, masquant potentiellement des bugs.
+
+### Problèmes de conception
+
+**Support Linux incomplet** : Toutes les fonctions Linux sont des `pass`, rendant le jeu Windows-only malgré les efforts de détection multiplateforme.
+
+**Couplage fort** : `Board._game_over()` lance directement un nouveau processus PowerShell, ce qui est très peu portable et crée un couplage inattendu.
+
+**Thread non stoppable** : Le thread d'écoute des inputs n'a pas de mécanisme d'arrêt propre, tournant indéfiniment en arrière-plan.
+
+### Bugs et comportements étranges
+
+**Fix "biscornu"** : Les développeurs eux-mêmes reconnaissent un bug dans `_check_collision()` avec la vérification `len(previous_pos) > 3`, indiquant une solution temporaire non optimale.
+
+**Démarrage en boucle** : La fonction `_game_over()` relance automatiquement le jeu via PowerShell au lieu de retourner au menu, créant une boucle sans fin de processus.
+
+**Détection EduPython fragile** : L'utilisation de `isatty()` pour détecter EduPython est un hack astucieux mais peu fiable à long terme.
+
+### Performance et optimisation
+- Recréation complète du board à chaque frame plutôt que mise à jour incrémentale
+- Utilisation de `sleep(0.01)` dans la boucle principale qui pourrait être optimisée
+- Conversion répétée de positions avec `get_pos()` pourrait être mise en cache
+
+## Recommandations prioritaires
+
+1. **Simplifier la documentation** : Réduire les commentaires au strict nécessaire, retirer les blagues et notes personnelles
+2. **Finaliser le support Linux** : Implémenter curses pour avoir un vrai jeu multiplateforme
+3. **Nettoyer le game over** : Retourner au menu au lieu de créer des processus infinis
+4. **Améliorer la gestion d'erreurs** : Utiliser des exceptions spécifiques et des messages clairs
+5. **Ajouter un système de configuration** : Externaliser FPS, scores, et dimensions du plateau
+
+## Conclusion
+Ce projet montre une bonne compréhension des concepts de programmation orientée objet et de gestion d'événements en temps réel. L'ambition est louable (multiplateforme, threading, sauvegarde) mais l'exécution souffre de quelques raccourcis et de fonctionnalités inachevées. Avec un peu de nettoyage et la finalisation du support Linux, ce pourrait être un excellent projet pédagogique. Le code fonctionne mais gagnerait en professionnalisme avec une documentation plus sobre et une architecture légèrement refactorisée.
 """
