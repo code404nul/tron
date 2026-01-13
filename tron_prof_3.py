@@ -589,9 +589,9 @@ def start_game_1v1(input_manager):
         
         for inputs in received_inputs:
             player_id, direction = inputs
-            print(f"Player {player_id} direction {direction}")
+            print(f"Joueur {player_id} dans ladirection {direction}")
             dx, dy = DIRECTION_MAP[direction]
-            print(f"dx: {dx}, dy: {dy}")
+            print(f"vers x : {dx}, vers y: {dy}")
 
             if player_id == 0:
                 player_blue.current_direction = (dx, dy)
