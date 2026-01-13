@@ -1,22 +1,15 @@
-import subprocess
 import os
 
-def executer_script_powershell(chemin_script):
-    
+def powershell_exec(chemin_script):
     if not os.path.exists(chemin_script):
         print(f"Erreur: Le fichier {chemin_script} n'existe pas")
-        return
-    
-    print(f"Exécution de: {chemin_script}\n")
-    subprocess.call([
-        "powershell.exe",
-        "-ExecutionPolicy", "Bypass",
-        "-File", chemin_script
-    ])
-    
-    print("\nScript terminé")
+        return False
 
+    print(f"Ouverture de PowerShell pour: {chemin_script}")
 
-# Utilisation
-if __name__ == "__main__":
-    executer_script_powershell("test.ps1")
+    os.system(f'start powershell -NoExit -ExecutionPolicy Bypass -File "{chemin_script}"')
+
+    return True
+
+powershell_exec("test.ps1")
+print("Si ça fonctionne pas, veuillez demarer le ps1 manuellement et si le ps1 fonctionne pas veuillez démarer les fichiers 1 par 1.")
