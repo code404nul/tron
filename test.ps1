@@ -56,6 +56,7 @@ $standardPaths = @(
     "$env:LOCALAPPDATA\Programs\Python",
     "$env:USERPROFILE\AppData\Local\Programs\Python",
     "C:\Python*",
+    "C:\\EduPython\App",
     "$env:PROGRAMFILES\Python*",
     "${env:PROGRAMFILES(x86)}\Python*"
 )
@@ -135,6 +136,92 @@ if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $python
         $scriptPath = Join-Path $PSScriptRoot $scriptName
         
         if (Test-Path $scriptPath) {
+            Write-Host "=== Préparation de $scriptName ===" -ForegroundColor Cyan
+            Write-Host ""
+            
+            # Si c'est tron_prof_1.py, vérifier et installer pynput
+            if ($scriptName -eq "tron_prof_1.py") {
+                Write-Host "$scriptName nécessite la bibliothèque 'pynput'" -ForegroundColor Yellow
+                $installPynput = Read-Host "Voulez-vous installer/vérifier pynput ? (O/N)"
+                
+                if ($installPynput -eq 'O' -or $installPynput -eq 'o') {
+                    Write-Host ""
+                    Write-Host "Recherche de pip..." -ForegroundColor Yellow
+                    
+                    # Trouver pip associé à l'interpréteur Python sélectionné
+                    $pythonDir = Split-Path $selectedPython.Emplacement
+                    $pipPath = Join-Path $pythonDir "Scripts\pip.exe"
+                    
+                    if (-not (Test-Path $pipPath)) {
+                        $pipPath = Join-Path $pythonDir "pip.exe"
+                    }
+                    
+                    # Essayer avec python -m pip si pip.exe n'est pas trouvé
+                    if (-not (Test-Path $pipPath)) {
+                        Write-Host "Test de pip avec 'python -m pip'..." -ForegroundColor Yellow
+                        $pipTest = & $selectedPython.Emplacement -m pip --version 2>&1
+                        
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-Host "pip trouvé et fonctionnel: $pipTest" -ForegroundColor Green
+                            $usePipModule = $true
+                        } else {
+                            Write-Host "ERREUR: pip n'a pas été trouvé pour cet interpréteur Python." -ForegroundColor Red
+                            Write-Host "Passage au script suivant..." -ForegroundColor Yellow
+                            Write-Host ""
+                            continue
+                        }
+                    } else {
+                        Write-Host "pip trouvé: $pipPath" -ForegroundColor Green
+                        $pipVersion = & $pipPath --version 2>&1
+                        Write-Host "Version: $pipVersion" -ForegroundColor White
+                        $usePipModule = $false
+                    }
+                    
+                    Write-Host ""
+                    Write-Host "Vérification de pynput..." -ForegroundColor Yellow
+                    
+                    # Vérifier si pynput est déjà installé
+                    $pynputCheck = & $selectedPython.Emplacement -c "import pynput; print('OK')" 2>$null
+                    
+                    if ($pynputCheck -eq "OK") {
+                        Write-Host "pynput est déjà installé et fonctionnel !" -ForegroundColor Green
+                    } else {
+                        Write-Host "Installation de pynput..." -ForegroundColor Yellow
+                        
+                        if ($usePipModule) {
+                            & $selectedPython.Emplacement -m pip install pynput
+                        } else {
+                            & $pipPath install pynput
+                        }
+                        
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-Host ""
+                            Write-Host "Vérification de l'installation..." -ForegroundColor Yellow
+                            $pynputVerify = & $selectedPython.Emplacement -c "import pynput; print('OK')" 2>$null
+                            
+                            if ($pynputVerify -eq "OK") {
+                                Write-Host "pynput installé et fonctionnel !" -ForegroundColor Green
+                            } else {
+                                Write-Host "ERREUR: pynput installé mais ne fonctionne pas correctement." -ForegroundColor Red
+                                Write-Host "Passage au script suivant..." -ForegroundColor Yellow
+                                Write-Host ""
+                                continue
+                            }
+                        } else {
+                            Write-Host "ERREUR: L'installation de pynput a échoué." -ForegroundColor Red
+                            Write-Host "Passage au script suivant..." -ForegroundColor Yellow
+                            Write-Host ""
+                            continue
+                        }
+                    }
+                    Write-Host ""
+                } else {
+                    Write-Host "Installation de pynput refusée. Passage au script suivant..." -ForegroundColor Yellow
+                    Write-Host ""
+                    continue
+                }
+            }
+            
             Write-Host "Lancement de $scriptName dans une nouvelle fenêtre..." -ForegroundColor Yellow
             Write-Host ""
             

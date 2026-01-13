@@ -48,34 +48,33 @@ Nous avons donc en urgance, trouver ine alternative interne, os.isatty
 """
 
 from random import sample
-from os import system, path, name, getcwd, isatty # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
+from os import system, path, name, isatty # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
 from os.path import dirname, abspath, join
-from time import sleep, mktime, localtime, time # Time est utiliser pour gerer le temps. ctime for convert sec to date str
+from time import sleep, mktime, localtime # Time est utiliser pour gerer le temps. ctime for convert sec to date str
+from sys import executable # Pour sys.executable qui donne quel interpreteur python va s'occuper de notre bad boy ^^ et aussi de notre is_atty ?
+from pathlib import Path
 import json # La lib json permet de manager les json
 if name == "nt": # Si windows
     is_win = True
     import winsound # Gestion audio
-"""
-else: # Si linux
-    is_win = False
-    #import ossaudiodev #Gestion audio
-    import curses # Gestion Clavier
-"""
 
 
 import sys # Pour sys.executable qui donne quel interpreteur python va s'occuper de notre bad boy ^^ et aussi de notre is_atty ?
-import threading
-import queue
 
+script = Path(__file__).with_name("tron_prof_1.py")
+
+def start_up_powershell():
+    system(f"powershell -NoExit -Command \"& '{executable}' '{script}'\"")
+    print(f'start powershell -NoExit -Command "& \'{executable}\' \'{script}\'"')
 
 def clear():
     """
     Docstring for clear
     Néttoie l'affichage de la console
     """
-    system('cls' if name == 'nt' else 'clear') #pour éviter d'écrire system('cls') à chaque fois, on va écrire clear()
-
+    system('cls' if is_win else 'clear') #pour éviter d'écrire system('cls') à chaque fois, on va écrire clear()
     pass
+
 COLOR = {
     "red": "\033[31m",
     "green": "\033[32m",
@@ -83,7 +82,8 @@ COLOR = {
     "blue": "\033[34m",
     "orange": "\033[38;5;208m",
     "white": "\033[37m",
-    "reset": "\033[0m"
+    "reset": "\033[0m",
+    "black": "\033[30m"
 } # Toutes ces valeurs permette de d'afficher des color dans le terminal, je ne l'ai ai pas trouver au hasard, j'ai trouver ca sur internet.
 
 CONFIG_SIZE_Y: int = 23  # Utiliser pour les border gauche et droit en gros le nombre de character sur la vertical (colone) Le nombre 23 a été défini parce qu'il est permet d'avoir une grande grille tout en restant raisonable pour etre poser pas trop de problème avec les consoles
@@ -385,23 +385,30 @@ class Board:
 
             for player in self.players: 
                 if cell == player.get_pos(): # si la case concerne la position current du joueur
-                    char, color = player.symbol, player.color # Mettre la couleur et le symbole concernant le joueur
+                    char, color = player.symbol, player.color # Mettre dla couleur et le symbole concernant le joueur
                     break
             if (cell + 1) % CONFIG_SIZE_X == 0: # Verifie que c'est le bord 
                 print(f"{COLOR[color]}{char}{COLOR['reset']}") # retour a la ligne
             else: # sinon
-                print(f"{COLOR[color] if color != "black" else ""}{char}{COLOR['reset'] if color != "black" else ""}", end="", flush=True) # On affiche les charactere les un apres les autres 
-
+                try:
+                    print(f"{COLOR[color] if color != "black" else ""}{char}{COLOR['reset'] if color != "black" else ""}", end="", flush=True) # On affiche les charactere les un apres les autres L INTERPRETEUR EDUPYTHON NE PEUX PAS LIRE CE FICHIER ESSAYER tron_prof_3.py
+                except:
+                    print(f"{char}", end="", flush=True) # On affiche les charactere les un apres les autres 
         return None
 
 class InputManager(): #creation d'une class InputManager pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier
 
     def __init__(self):
-        self.input_config_save = SaveManager("config.json")
+        self.input_config_save = SaveManager("config_2.json")
         self.input_config_value = self.input_config_save.load()
+        if isinstance(self.input_config_value, dict):
+            self.input_config_value = self.input_config_value["layout"]
+        else:
+            self.input_config_value = self.input_config_value
         self.input_table = [["z", "s", "q", "d"], ["i", "k", "j", "l"]]
         if len(self.input_config_value) != 0:
             self.input_table = self.input_config_value
+        print(self.input_table)
         
     def input_config(self):
         for i in range(2):
@@ -419,7 +426,7 @@ class InputManager(): #creation d'une class InputManager pour stocker les contro
                 return (i, self.input_table[i].index(inputs))
         return None
 
-    def read_inputs(self, get_players_info=False, queue = None):
+    def read_inputs(self, get_players_info=False):
         inputs = list(input())
         if not get_players_info: return inputs
         else:
@@ -427,12 +434,8 @@ class InputManager(): #creation d'une class InputManager pour stocker les contro
             for ele in inputs:
                 action = self.identify_player(ele)
                 if action: actions.append(action)
-            
-        if not queue: return actions
-        
-                    
-    
-        
+
+        return actions
 
 class GameManager:
     def __init__(self):
@@ -526,7 +529,7 @@ class Menu:
         """
         self.main_interface = f"{COLOR['green']}{ASCIIART[0]}{COLOR['reset']}"
 
-        colors_sample = sample(list(COLOR.keys())[:-1], k=4) # choisi 4 couleurs au hasard pour le menu SANS EN REPRENDRE 1 deja repris dans la liste
+        colors_sample = sample(list(COLOR.keys())[:-2], k=4) # choisi 4 couleurs au hasard pour le menu SANS EN REPRENDRE 1 deja repris dans la liste
         self.selection_list = [
             f"{COLOR[colors_sample[0]]}Démarrer le jeu{COLOR['reset']}",
             f"{COLOR[colors_sample[1]]}Touches Clavier{COLOR['reset']}",
@@ -548,7 +551,10 @@ class Menu:
         """
 
         while True:
-            pinput = input_manager.read_inputs(True)[0][1]
+
+            pinput = input_manager.read_inputs(True)
+            print(pinput)
+            pinput = pinput[0][1]
                 # valider
             if pinput == 3:  # Droite
                 return selected_index
@@ -579,8 +585,6 @@ def start_game_1v1(input_manager):
     board_instance.add_player(player_blue)
     board_instance.add_player(player_orange)
 
-    callback_queue = queue.Queue() # Queue pour gerer la queue d'input, ca va permettre de pouvoir "fait tourner le jeu" et de recuperer les inputs en meme temps (threading) et la queue va permettre a ce que chaque frame, le programme puisse traiter les inputs detectés. 
-
     # mapping des directions
     DIRECTION_MAP = {
         0: (0, -1),  # Haut
@@ -590,38 +594,26 @@ def start_game_1v1(input_manager):
     }
     board_instance.show_stadium()
 
-    last_move_time = 0
 
-    # Thread d'input qui tourne en permanence en arrière-plan
-    def input_listener():
-        """Thread qui écoute en continu les inputs clavier et les met dans la queue"""
-        while True:
-            input_manager.input_common(callback_queue)
-
-    input_thread = threading.Thread(target=input_listener) # démarrer le thread d'écoute des inputs
-    input_thread.start()
-
+    move_player = [False, False]
     while True:
 
-        while not callback_queue.empty(): # traiter les inputs dispo
-            try:
-                # Recupere un msg sans attendre
-                callback_message = callback_queue.get_nowait()
+        received_inputs = input_manager.read_inputs(True)
+        
+        for inputs in received_inputs:
+            player_id, direction = inputs
+            print(f"Player {player_id} direction {direction}")
+            dx, dy = DIRECTION_MAP[direction]
+            print(f"dx: {dx}, dy: {dy}")
 
-                direction, player_id = callback_message
-                dx, dy = DIRECTION_MAP[direction]
+            if player_id == 0:
+                player_blue.current_direction = (dx, dy)
+                move_player[0] = True
+            elif player_id == 1:
+                player_orange.current_direction = (dx, dy)
+                move_player[1] = True
 
-                if player_id == 0:
-                    player_blue.current_direction = (dx, dy)
-                elif player_id == 1:
-                    player_orange.current_direction = (dx, dy)
-
-            except queue.Empty: # PLus d'input
-                break
-
-        current_time = time()
-        if current_time - last_move_time >= 0.5: # Tout les 0.5 un peu pres refaire une image donc 2 fps
-
+        if move_player[0] and move_player[1]:
             dx_blue, dy_blue = player_blue.current_direction
             player_blue.move(dx_blue, dy_blue)
 
@@ -629,19 +621,20 @@ def start_game_1v1(input_manager):
             player_orange.move(dx_orange, dy_orange)
 
             board_instance.show_stadium()
-
-            last_move_time = current_time
-
-        # Petit pause pour sont petit coeur
-        sleep(0.01)
-
+            move_player = [False, False]
+    
 def main():
     game_manager = GameManager()
     game_manager.run()
 
+"""
+input_manager = InputManager()
+while True:
+    print(input_manager.read_inputs(True))
+"""
 
 if not isatty(1): # Le 1 et pour verrifier dans stdout, il verifie que la sortie et un terminal conventionnel
-    system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
+    system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof_2.py')}")
     winsound.PlaySound('tronost.wav', winsound.SND_FILENAME | winsound.SND_LOOP) # lance une musique, loupé
 else:
     main()
