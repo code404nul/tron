@@ -48,33 +48,37 @@ Nous avons donc en urgance, trouver ine alternative interne, os.isatty
 """
 
 from random import sample
-from os import system, path, name, getcwd, isatty # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
+from os import system, path, name, isatty # Le system de os est toujours utiliser pour clear la console, et path pour la gestion du chemin pour l'enregistrement du json et name pour detecter si on est sur du linux ou windows
 from os.path import dirname, abspath, join
 from time import sleep, mktime, localtime, time # Time est utiliser pour gerer le temps. ctime for convert sec to date str
+from sys import executable # Pour sys.executable qui donne quel interpreteur python va s'occuper de notre bad boy ^^ et aussi de notre is_atty ?
+from pathlib import Path
+from pynput import keyboard # le fameux pynput
 import json # La lib json permet de manager les json
-if name == "nt": # Si windows
-    is_win = True
-    import winsound # Gestion audio
-    import msvcrt # Gestion clavier
-"""
-else: # Si linux
-    is_win = False
-    #import ossaudiodev #Gestion audio
-    import curses # Gestion Clavier
-"""
-
-
-import sys # Pour sys.executable qui donne quel interpreteur python va s'occuper de notre bad boy ^^ et aussi de notre is_atty ?
 import threading
 import queue
 
+
+if name == "nt": # Si windows
+    is_win = True
+    import winsound # Gestion audio
+else: # Si linux
+    is_win = False
+    #import ossaudiodev #Gestion audio
+
+
+script = Path(__file__).with_name("tron_prof_1.py")
+
+def start_up_powershell():
+    system(f"powershell -NoExit -Command \"& '{executable}' '{script}'\"")
+    print(f'start powershell -NoExit -Command "& \'{executable}\' \'{script}\'"')
 
 def clear():
     """
     Docstring for clear
     Néttoie l'affichage de la console
     """
-    system('cls' if name == 'nt' else 'clear') #pour éviter d'écrire system('cls') à chaque fois, on va écrire clear()
+    system('cls' if is_win else 'clear') #pour éviter d'écrire system('cls') à chaque fois, on va écrire clear()
 
 COLOR = {
     "red": "\033[31m",
@@ -344,7 +348,7 @@ class Board:
 
         self.save_manager.save(game_data)
         sleep(4)
-        system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
+        start_up_powershell()
         quit()
 
     def add_player(self, player):
@@ -397,102 +401,131 @@ class Board:
         return None
 
 class InputManager():
-    def __init__(self,tab = None):
+    def __init__(self, tab=None):
         """creation d'une class InputManager pour stocker les controles des deux joueurs et gerer tout ce qui touche a la detection d'entree clavier"""
 
-
         #les controles des joueurs sont stocker dans une matrice tab de 2x4 pour les 2 joueurs et les 4 touches haut bas gauche droite
-        if tab: self.input_table=tab #si tab existe alors self.inputtable prend la valeur de tab
-        else: self.input_table = [[122,115,113,100],[105, 107, 106, 108]] #sinon alors self.inputtable devient une matrice remplie de 95 qui correspond en ascii au '_'
+        if tab: 
+            self.input_table = tab #si tab existe alors self.inputtable prend la valeur de tab
+        else: 
+            # Configuration par défaut: z,s,q,d pour J1 (AZERTY) et i,k,j,l pour J2
+            self.input_table = [['z', 's', 'q', 'd'], ['i', 'k', 'j', 'l']]
+        
+        # Variables pour gérer l'attente d'une touche avec pynput
+        self.last_key = None
+        self.waiting_for_key = False
+        self.key_event = threading.Event()
 
-    def display(self,player_id = 3):
+    def display(self, player_id=3):
         """une fonction qui affiche de manière esthetique les inputs des joueur
         Ne retournz rien"""
         if player_id > 2 or player_id < 0: #si l'id du joueur dont on veut print les touches est mal précisé alors la fonction print les touches des 2 joueurs
             print(f"""
 Joueur 1
-UP:{chr(self.input_table[0][0])}
-DOWN:{chr(self.input_table[0][1])}
-LEFT:{chr(self.input_table[0][2])}
-RIGHT:{chr(self.input_table[0][3])}
+UP:{self.input_table[0][0]}
+DOWN:{self.input_table[0][1]}
+LEFT:{self.input_table[0][2]}
+RIGHT:{self.input_table[0][3]}
 
 Joueur 2
-UP:{chr(self.input_table[1][0])}
-DOWN:{chr(self.input_table[1][1])}
-LEFT:{chr(self.input_table[1][2])}
-RIGHT:{chr(self.input_table[1][3])}
+UP:{self.input_table[1][0]}
+DOWN:{self.input_table[1][1]}
+LEFT:{self.input_table[1][2]}
+RIGHT:{self.input_table[1][3]}
 """) #les str de type f permette de placer des variables à l'interieur du str avec { } sans devoir concatener
 
         else: #si l'id est correctement specifié alors on print le joueur voulue
             print(f"""
 Joueur {'1' if player_id == 0 else '2'}
-UP:{chr(self.input_table[player_id][0])}
-DOWN:{chr(self.input_table[player_id][1])}
-LEFT:{chr(self.input_table[player_id][2])}
-RIGHT:{chr(self.input_table[player_id][3])}
+UP:{self.input_table[player_id][0]}
+DOWN:{self.input_table[player_id][1]}
+LEFT:{self.input_table[player_id][2]}
+RIGHT:{self.input_table[player_id][3]}
 """)
 
-    def identify_player(self, input_user):
+    def identify_player(self, key_char):
         """
         Docstring pour identify_player
 
         retorn le joeur concerner
         :param self: Description
-        :param input_user: Descinput présséription
+        :param key_char: La touche pressée sous forme de caractère
         """
         for i in range(2):
-            if input_user in self.input_table[i]: # si l'input préssé et dans la table d'un joueur
+            if key_char in self.input_table[i]: # si l'input préssé et dans la table d'un joueur
                 return i # retourner l'indec du joueur
         return None
 
-    def inputs_windows(self):
-        """cette fonction return la touche pressé sous forme decimal en ascii(ex: si 'z' est pressé alors ça return 122)"""
-        return ord(msvcrt.getwch())
+    def wait_for_key(self):
+        """Attend qu'une touche soit pressée et la retourne (avec pynput)"""
+        self.last_key = None
+        self.waiting_for_key = True
+        self.key_event.clear()
+        
+        def on_press(key):
+            if self.waiting_for_key:
+                try:
+                    self.last_key = key.char
+                except AttributeError:
+                    self.last_key = str(key)
+                self.waiting_for_key = False
+                self.key_event.set()
+                return False  # Arrête le listener
+        
+        with keyboard.Listener(on_press=on_press) as listener:
+            self.key_event.wait()
+        
+        return self.last_key
 
-
-    def inputs_linux(self): #cette fonction fait pareil que inputs_windows() mais en utilisant curses pour linux
-        pass #plus tard
-
-
-    def initbindingwin(self):
+    def initbinding(self):
         """
-        Docstring pour initbindingwin
-        bruiding des inputs windows
+        Docstring pour initbinding
+        Configuration des touches pour les deux joueurs avec pynput
         :param self: Description
         """
         for player_id in range(2):
             for inp in range(4): #parcours par indince du tableau self.input_table
                 clear()
                 self.display(player_id)
-                self.input_table[player_id][inp]=ord(msvcrt.getwch()) #attend un input exterieur, puis le stock en ascii(ex: z->122) dans self.input_table
+                direction = ["HAUT", "BAS", "GAUCHE", "DROITE"][inp]
+                print(f"\nJoueur {player_id + 1} - Appuyez sur la touche pour {direction}")
+                
+                key = self.wait_for_key() #attend un input exterieur avec pynput, puis le stock
+                self.input_table[player_id][inp] = key
+            
             self.display(player_id)
+        
         return self
-
-    def initbindinglinux(self):
-        pass # plus tard
 
     def input_common(self, callback_queue):
         """
         Docstring pour input_common
 
-        retour l'input concerné, dans une fonction multi platforme
+        retour l'input concerné, dans une fonction multi platforme avec pynput
         :param self: Description
         :param callback_queue: la queue que l'input va traiter
         """
-        if is_win:
-            input_user = self.inputs_windows()
-        else:
-            input_user = self.inputs_linux()
+        if callback_queue is None: 
+            return self.wait_for_key() # Si aucune queue est concerné par l'histoire alors retourner simplement l'input
 
-        if callback_queue is None: return input_user # Si aucune queue est concerné par l'histoire alors retourner simplement l'input
+        # Fonction pour traiter les événements clavier avec pynput
+        def on_press(key):
+            try:
+                key_char = key.char
+            except AttributeError:
+                return  # Ignorer les touches spéciales
+            
+            player_id = self.identify_player(key_char)
+            
+            if player_id is not None:
+                direction_index = self.input_table[player_id].index(key_char)
+                result = (direction_index, player_id) # L'index de sur la table de l'input du joueur concerner, et son id
+                callback_queue.put(result) # Va mettre le resultat dans la queux a notre start_game_1v1
 
-        player_id = self.identify_player(input_user)
-
-        if player_id is not None:
-            result = (self.input_table[player_id].index(input_user), player_id) # L'index de sur la table de l'input du joueur concerner, et son id
-            callback_queue.put(result) # Va mettre le resultat dans la queux a notre start_game_1v1
-            return result
-        return None
+        # Démarre le listener pynput
+        listener = keyboard.Listener(on_press=on_press)
+        listener.start()
+        return listener
 
 
 class GameManager:
@@ -502,7 +535,7 @@ class GameManager:
 
         La classe qui va gerer le jeu, le menu, les input, ect... c'est un peu le fourre tout (meme si question fourre tout, board est pas mal non plus ^^)
         """
-        self.input_config = SaveManager("config.json")
+        self.input_config = SaveManager("config_1.json")
         self.menu_input_config = None
         self.input_manager = None
         self._initialize_input()
@@ -526,31 +559,19 @@ class GameManager:
         2. QWERTY?
         """)
             if int(keyboard_layout) == 1:
-                keyboard_keys = [122, 115, 113, 100]  # z, s, q, d
+                keyboard_keys = ['z', 's', 'q', 'd']  # z, s, q, d
             else:
-                keyboard_keys = [119, 115, 97, 100]   # w, s, a, d
-            self.input_manager = InputManager([keyboard_keys, [105, 107, 106, 108]])
+                keyboard_keys = ['w', 's', 'a', 'd']  # w, s, a, d
+            
+            self.input_manager = InputManager([keyboard_keys, ['i', 'k', 'j', 'l']])
             self.menu_input_config = keyboard_keys
 
     def keyboard_settings_menu(self):
         """configutation des touches"""
         clear()
-
         joueur_temp = InputManager()
-
-        if name == 'nt':
-            for player_id in range(2):
-                for inp in range(4):
-                    clear()
-                    print("=== Config des touches ===\n")
-                    direction = ["HAUT", "BAS", "GAUCHE", "DROITE"][inp]
-                    print(f"Joueur {player_id + 1} - Appuyez sur la touche pour {direction}")
-                    joueur_temp.input_table[player_id][inp] = ord(msvcrt.getwch())
-        else:
-            pass # Linux on verra
+        joueur_temp = joueur_temp.initbinding()  # Utilise pynput pour la configuration
         self.input_config.raw_save({"layout": joueur_temp.input_table})
-
-
         return joueur_temp
 
     def credits(self):
@@ -561,10 +582,7 @@ class GameManager:
         """
         clear()             #clear le terminal
         print(ASCIIART[1])  #print les credits
-        if name == 'nt':
-            msvcrt.getwch() #stop le programme en attente d'un input clavier pour que l'utilisateur puisse lire les credits et appuyer sur n'importe quel touche pour retourner au menu principal
-        else: #linux plus tard
-            pass
+        self.input_manager.wait_for_key() #stop le programme en attente d'un input clavier pour que l'utilisateur puisse lire les credits et appuyer sur n'importe quel touche pour retourner au menu principal
 
     def score(self):
         """
@@ -659,29 +677,38 @@ class Menu:
 
     def handle_menu_interaction(self, selected_index=0, menu_input_config=None):
         """
-        gere tout ce qui est navigation dans le menu
-        reuturn : l'optiuon selectionné
+        gere tout ce qui est navigation dans le menu avec pynput
+        return : l'option selectionné
         """
-        if name == 'nt':  # Windows
-            while True:
-                pinput = ord(msvcrt.getwch()) #en attente d'une entrée clavier
+        while True:
+            key = None
+            key_event = threading.Event()
+            
+            def on_press(k):
+                nonlocal key
+                try:
+                    key = k.char
+                except AttributeError:
+                    pass
+                key_event.set()
+                return False  # Arrête le listener
+            
+            with keyboard.Listener(on_press=on_press) as listener:
+                key_event.wait() #en attente d'une entrée clavier
+            
+            # valider
+            if key == menu_input_config[3]: #touche D (ou équivalent)
+                return selected_index
 
-                # valider
-                if pinput == menu_input_config[3]: #touche D
-                    return selected_index
+            # aller en HAUT
+            elif key == menu_input_config[0]: #touche z ou w en fonction du clavier
+                selected_index = (selected_index - 1) % len(self.selection_list)
 
-                # aller en HAUT
-                elif pinput == menu_input_config[0]: #touche z ou w en fonction du clavier
-                    selected_index = (selected_index - 1) % len(self.selection_list)
+            # aller en BAS
+            elif key == menu_input_config[1]: #touche s
+                selected_index = (selected_index + 1) % len(self.selection_list)
 
-                # aller en BAS
-                elif pinput == menu_input_config[1]: #touche s
-                    selected_index = (selected_index + 1) % len(self.selection_list)
-
-                self.refresh_menu(selected_index)
-
-        else:  # Linux, dans la grande logique
-            pass # on verra, on verra
+            self.refresh_menu(selected_index)
 
 def start_game_1v1(input_manager):
     """
@@ -708,18 +735,12 @@ def start_game_1v1(input_manager):
         2: (-1, 0),  # Gauche
         3: (1, 0)    # Droite
     }
+    
     board_instance.show_stadium()
-
     last_move_time = 0
 
-    # Thread d'input qui tourne en permanence en arrière-plan
-    def input_listener():
-        """Thread qui écoute en continu les inputs clavier et les met dans la queue"""
-        while True:
-            input_manager.input_common(callback_queue)
-
-    input_thread = threading.Thread(target=input_listener) # démarrer le thread d'écoute des inputs
-    input_thread.start()
+    # Démarre le listener avec pynput
+    listener = input_manager.input_common(callback_queue)
 
     while True:
 
@@ -762,8 +783,9 @@ def main():
 
 
 if not isatty(1): # Le 1 et pour verrifier dans stdout, il verifie que la sortie et un terminal conventionnel
-    system(f"start powershell.exe {sys.executable} {join(dirname(abspath(__file__)), 'tron_prof.py')}")
-    winsound.PlaySound('tronost.wav', winsound.SND_FILENAME | winsound.SND_LOOP) # lance une musique, loupé
+    start_up_powershell()
+    if is_win:
+        winsound.PlaySound('tronost.wav', winsound.SND_FILENAME | winsound.SND_LOOP) # lance une musique, loupé
 else:
     main()
 
